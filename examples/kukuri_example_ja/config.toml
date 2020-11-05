@@ -1,0 +1,30 @@
+#======================
+# General Settings
+#======================
+
+# Default parse type setting for non-explicit extension file.
+# Allow value: "kukuri", "yarn", or "ink"
+default_script_type = "kukuri"
+
+# if true => separate each scene files
+# if false => output into one bundle file
+separate_output = true
+
+# Dialog text and command data output types.
+# Allow value: "gd", "json"
+outputs = ["gd"]
+
+# =====================
+# Localization Settings
+# =====================
+
+# if false => discard localization settings
+use_l10n_output = true
+
+# Set original locale
+# this value used for default dialog text locale
+orig_locale = "ja_JP"
+
+# Set Localization outputs
+# Allow value: "po", "fluent", or "csv"
+l10n_outputs = ["po"]

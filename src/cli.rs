@@ -1,0 +1,26 @@
+use clap::{App, Arg};
+
+pub fn build_cli() -> App<'static, 'static> {
+    App::new("Kukuri")
+        .version("0.1.0")
+        .author("dettalant")
+        .arg(Arg::with_name("config")
+            .help("Set a config file")
+            .short("c")
+            .long("config")
+            .value_name("FILE")
+            .takes_value(true)
+        )
+        .arg(Arg::with_name("dir")
+            .help("Set output directory")
+            .short("d")
+            .long("dir")
+            .value_name("DIRECTORY")
+            .takes_value(true)
+        )
+        .arg(Arg::with_name("FILE")
+            .help("Set input file(s)")
+            .required(true)
+            .min_values(1)
+        )
+}
