@@ -76,7 +76,7 @@ impl KukuriScript {
 
     fn is_header_symbol(line: &str) -> bool {
         let mut is_header_symbol = true;
-        let mut chars = line.chars();
+        let mut chars = line.trim_start().chars();
         for _ in 0..3 {
             match chars.next() {
                 Some(c) if c == '+' => {},
@@ -91,7 +91,7 @@ impl KukuriScript {
 
     fn is_scene_end_symbol(line: &str) -> bool {
         let mut is_header_symbol = true;
-        let mut chars = line.chars();
+        let mut chars = line.trim_start().chars();
         for _ in 0..3 {
             match chars.next() {
                 Some(c) if c == '=' => {},
@@ -174,6 +174,12 @@ impl KukuriScript {
             '*' | '+' | '-' => DialogKind::Choices,
             _ => DialogKind::Dialog,
         }
+    }
+
+    fn count_indent(full_line: &str) -> usize {
+        full_line.chars()
+            .position(|c| c != ' ' && c != '\u{0009}')
+            .unwrap_or(0)
     }
 }
 
@@ -273,7 +279,7 @@ mod tests {
             ("===", true),
             ("==not scene end==", false),
             ("========", true),
-            ("   === untrim line", false),
+            ("   === untrimmed line", true),
             ("not===scene end", false),
         ];
 
@@ -288,12 +294,28 @@ mod tests {
             ("+++", true),
             ("++++++", true),
             ("++not header symbol++", false),
-            ("   +++ untrim line", false),
+            ("   +++ untrimmed line", true),
             ("not+++header symbol", false),
         ];
 
         for &(src, ref expected) in &tests {
             assert_eq!(expected, &KukuriScript::is_header_symbol(src));
+        }
+    }
+
+    #[test]
+    fn test_count_indent() {
+        let tests = [
+            ("", 0),
+            ("A: space 0", 0),
+            ("  A: space 2", 2),
+            ("    A: space 4", 4),
+            ("	A: tab1", 1),
+            ("		A: tab2", 2),
+        ];
+
+        for &(src, expected) in &tests {
+            assert_eq!(expected, KukuriScript::count_indent(src));
         }
     }
 }

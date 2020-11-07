@@ -79,6 +79,7 @@ separate_output = false
             default_script_type: String::from("yarn"),
             outputs: vec![String::from("gd"), String::from("json")],
             l10n_outputs: vec![String::from("po"), String::from("fluent")],
+            ..Default::default()
         };
 
         let mut conf1 = Config::new();
