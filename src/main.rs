@@ -1,5 +1,6 @@
 mod cli;
 mod core;
+mod import;
 
 use std::path::PathBuf;
 
@@ -11,17 +12,22 @@ fn main() {
         None => core::config::Config::new(),
     };
 
+    let mut kukuri = core::Kukuri::from_config(config);
 
-    let output_dir = match matches.value_of("dir") {
-        Some(path) => PathBuf::from(path)
+    if let Some(path) = matches.value_of("dir") {
+        let output_dir = PathBuf::from(path)
             .canonicalize()
-            .unwrap_or_else(|_| panic!("Can't find output directory: {}", path)),
-        None => std::env::current_dir().expect("Failed get current directory.")
-    };
+            .unwrap_or_else(|_| panic!("Can't find output directory: {}", path));
+        kukuri.set_output_dir(output_dir)
+    }
 
-    println!("conf: {:?}", config);
-    println!("output_dir: {:?}", output_dir);
 
     let inputs: Vec<_> = matches.values_of("FILE").unwrap().collect();
-    println!("Using input files: {:?}", inputs);
+    // println!("Using input files: {:?}", inputs);
+
+    for path in inputs {
+        kukuri.import(path)
+    }
+
+    println!("kukuri: {:#?}", kukuri);
 }

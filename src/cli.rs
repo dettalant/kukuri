@@ -1,9 +1,10 @@
-use clap::{App, Arg};
+use clap::{crate_authors, crate_description, crate_version, App, Arg};
 
 pub fn build_cli() -> App<'static, 'static> {
     App::new("Kukuri")
-        .version("0.1.0")
-        .author("dettalant")
+        .version(crate_version!())
+        .author(crate_authors!())
+        .about(crate_description!())
         .arg(Arg::with_name("config")
             .help("Set a config file")
             .short("c")

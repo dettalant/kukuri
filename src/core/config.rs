@@ -1,9 +1,9 @@
 use super::utils;
-use std::path::{Path};
+use std::path::Path;
 use serde::{Serialize, Deserialize};
 use toml;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
 pub struct Config {
     pub use_l10n_output: bool,
@@ -53,4 +53,45 @@ impl Default for Config {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::Config;
 
+    #[test]
+    fn test_parse() {
+        let conf_str0 = "\
+use_l10n_output = false
+separate_output = false
+orig_locale = 'ja_JP'
+default_script_type = 'yarn'
+outputs = ['gd', 'json']
+l10n_outputs = ['po', 'fluent']";
+
+        let conf_str1 = "\
+orig_locale = 'fr_FR'
+separate_output = false
+";
+
+        let conf0 = Config {
+            use_l10n_output: false,
+            separate_output: false,
+            orig_locale: String::from("ja_JP"),
+            default_script_type: String::from("yarn"),
+            outputs: vec![String::from("gd"), String::from("json")],
+            l10n_outputs: vec![String::from("po"), String::from("fluent")],
+        };
+
+        let mut conf1 = Config::new();
+        conf1.orig_locale = String::from("fr_FR");
+        conf1.separate_output = false;
+
+        let tests = [
+            (conf_str0, Ok(conf0)),
+            (conf_str1, Ok(conf1)),
+        ];
+
+        for &(src, ref expected) in &tests {
+            assert_eq!(expected, &Config::parse(src));
+        }
+    }
+}
