@@ -1,16 +1,14 @@
-pub mod config;
 pub mod dialog;
-mod utils;
 
 use std::path::{Path, PathBuf};
-use config::Config;
 use dialog::Scene;
+use crate::config::Config;
+use crate::utils;
 use crate::import::{ImportType, kukuri::KukuriScript};
 
 #[derive(Debug)]
 pub struct Kukuri {
-    pub conf: config::Config,
-    pub output_dir: PathBuf,
+    pub conf: Config,
     pub scenes: Vec<Scene>,
 }
 
@@ -21,7 +19,7 @@ impl Kukuri {
     //     }
     // }
 
-    pub fn from_config(conf: config::Config) -> Self {
+    pub fn from_config(conf: Config) -> Self {
         Kukuri {
             conf,
             ..Default::default()
@@ -29,8 +27,14 @@ impl Kukuri {
     }
 
     pub fn set_output_dir(&mut self, new_dir: PathBuf) {
-        self.output_dir = new_dir
+        self.conf.output_dir = new_dir;
     }
+
+
+    pub fn set_l10n_output_dir(&mut self, new_dir: PathBuf) {
+        self.conf.l10n_output_dir = new_dir;
+    }
+
 
     fn parse(&mut self, content: &str, ext: &str) {
         let import_type = ImportType::from_extension(
@@ -64,13 +68,16 @@ impl Kukuri {
             Err(e) => eprintln!("Failed to load {}: {:?}", path.as_ref().display(), e)
         };
     }
+
+    // pub fn export(self) {
+    //
+    // }
 }
 
 impl Default for Kukuri {
     fn default() -> Self {
         Kukuri {
             conf: Config::new(),
-            output_dir: std::env::current_dir().expect("Failed get current directory."),
             scenes: Vec::new(),
         }
     }
@@ -80,7 +87,7 @@ impl Default for Kukuri {
 #[cfg(test)]
 mod tests {
     use super::Kukuri;
-    use crate::core::config::Config;
+    use crate::config::Config;
     use std::env;
 
     #[test]
@@ -97,8 +104,27 @@ mod tests {
             (tmp_dir, kkr1),
         ];
 
+        for (ref src, ref expected) in &tests {
+            assert_eq!(*src, *expected.conf.output_dir);
+        }
+    }
+
+    #[test]
+    fn test_set_l10n_output_dir() {
+        let current_dir = env::current_dir().expect("Failed get current dir.");
+        let tmp_dir = env::temp_dir();
+
+        let kkr0 = Kukuri::from_config(Config::new());
+        let mut kkr1 = Kukuri::from_config(Config::new());
+        kkr1.set_l10n_output_dir(tmp_dir.clone());
+
+        let tests = [
+            (current_dir, kkr0),
+            (tmp_dir, kkr1),
+        ];
+
         for &(ref src, ref expected) in &tests {
-            assert_eq!(*src, *expected.output_dir);
+            assert_eq!(*src, *expected.conf.l10n_output_dir);
         }
     }
 }

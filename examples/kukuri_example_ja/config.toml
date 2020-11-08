@@ -28,3 +28,10 @@ orig_locale = "ja_JP"
 # Set Localization outputs
 # Allow value: "po", "fluent", or "csv"
 l10n_outputs = ["po"]
+
+# =====================
+# Output Settings
+# =====================
+
+output_dir = "./output"
+l10n_output_dir = "./locale"
