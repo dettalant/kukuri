@@ -16,9 +16,9 @@ pub enum DialogBody {
 #[derive(Clone, Debug)]
 pub struct Dialog {
     pub kind: DialogKind,
-    // if DialogKind::Dialog => DialogTalker
+    // if DialogKind::Dialog => Dialog label e.g. "SceneTitle_idx_talker"
     // if DialogKind::Command => CommandName
-    // if DialogKind::Choices => "choices" // placeholder
+    // if DialogKind::Choices => Choice label e.g. "SceneTitle_idx_C1L2"
     pub id: String,
     pub args: Vec<DialogBody>
 }

@@ -3,6 +3,7 @@ mod core;
 mod import;
 mod config;
 mod utils;
+mod export;
 
 use std::path::PathBuf;
 
@@ -38,5 +39,7 @@ fn main() {
         kukuri.import(path)
     }
 
-    println!("kukuri: {:#?}", kukuri);
+    if kukuri.conf.use_l10n_output {
+        kukuri.l10n_export();
+    }
 }

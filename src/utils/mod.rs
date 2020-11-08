@@ -6,3 +6,8 @@ pub fn read_file(path: &Path) -> std::io::Result<String> {
     let s = fs::read_to_string(path)?;
     Ok(s)
 }
+
+pub fn write_file(path: &Path, s: &str) -> std::io::Result<()> {
+    fs::write(path, s)?;
+    Ok(())
+}

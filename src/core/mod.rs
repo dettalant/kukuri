@@ -5,6 +5,7 @@ use dialog::Scene;
 use crate::config::Config;
 use crate::utils;
 use crate::import::{ImportType, kukuri::KukuriScript};
+use crate::export::{L10nExportType, po::Po};
 
 #[derive(Debug)]
 pub struct Kukuri {
@@ -70,8 +71,41 @@ impl Kukuri {
     }
 
     // pub fn export(self) {
+    //     if self.scenes.is_empty() { return };
     //
+    //     for t in self.conf.outputs {
+    //
+    //     }
     // }
+
+    pub fn l10n_export(self) {
+        if self.scenes.is_empty() || !self.conf.use_l10n_output { return };
+
+        let mut exports: Vec<L10nExportType> = self.conf.l10n_outputs.iter()
+            .map(|s| L10nExportType::parse(s))
+            .collect();
+
+        exports.dedup();
+
+        // export type
+        for et in exports {
+            let locale = (self.conf.orig_locale.as_str()).splitn(2, "_")
+                .nth(0)
+                .unwrap_or("en");
+            let ext = et.extension();
+            let mut path = self.conf.l10n_output_dir.clone();
+            path.push(
+                format!("{}{}", locale, ext)
+            );
+
+            let s = match et {
+                L10nExportType::Po => Po::export_string(&self.scenes, locale),
+            };
+
+            utils::write_file(path.as_ref(), &s).expect("Unable to write file.");
+        }
+
+    }
 }
 
 impl Default for Kukuri {

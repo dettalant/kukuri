@@ -1,5 +1,55 @@
 use crate::core::dialog::{Dialog, DialogBody, DialogKind, Scene};
 
+struct SceneMetaData{
+    scene_title: String,
+    nest_lv: usize,
+    idxs: Vec<usize>,
+    // current choice index
+    choice_idx: u32,
+    nest_choices: Vec<(u32, u32)>,
+}
+
+impl SceneMetaData {
+    pub fn new() -> Self {
+        Self {
+            scene_title: String::new(),
+            nest_lv: 0,
+            idxs: vec![0],
+            choice_idx: 0,
+            nest_choices: Vec::new(),
+        }
+    }
+
+    pub fn dialog_count_up(&mut self) {
+        self.idxs[self.nest_lv] += 1;
+    }
+
+    pub fn dialog_label(&self) -> String {
+        let mut s = String::from(&self.scene_title);
+
+        for i in 0..self.nest_lv + 1 {
+            s.push_str(&format!("_{}", self.idxs[i]));
+
+            if i < self.nest_choices.len() {
+                let (choice_n, label_n) = self.nest_choices[i];
+                s.push_str(&format!("_C{}L{}", choice_n, label_n));
+            }
+        }
+
+        s
+    }
+
+    pub fn set_scene_title (&mut self, new_title: &str) {
+        self.scene_title = String::from(new_title);
+    }
+
+    pub fn clear(&mut self) {
+        *self = Self::new();
+    }
+
+}
+
+
 // TODO: toml + serde implement
 pub struct KukuriScript;
 
@@ -7,58 +57,40 @@ impl KukuriScript {
     pub fn parse(content: &str) -> Vec<Scene> {
         let mut scenes: Vec<Scene> = Vec::new();
         let mut is_header = false;
-        let mut scene_title = String::new();
         let mut scene_dialogs: Vec<Dialog> = Vec::new();
+        let mut s_meta = SceneMetaData::new();
 
         for full_line in content.lines() {
-            let line = KukuriScript::trim_comment(full_line.trim());
+            let line = Self::trim_comment(full_line.trim());
             // Empty line is skip.
             if line.is_empty() { continue };
 
             if is_header {
-                // Header symbol check
-                if KukuriScript::is_header_symbol(line) {
-                    is_header = false;
-                    continue;
-                }
-
-                let (header_id, header_body) = KukuriScript::header_split(line);
-
-                if header_id == "title" {
-                    let title_chars: Vec<char> = header_body.chars().collect();
-                    if title_chars[0] == '\'' || title_chars[0] == '"' {
-                        let max = title_chars.len() - 1;
-                        let title: String = title_chars.iter()
-                            .enumerate()
-                            .filter(|&(i, _)| i > 0 && i < max)
-                            .map(|(_, c)| c)
-                            .collect();
-                        scene_title = title;
-                    }
-                }
-
+                is_header = Self::header_process(line, &mut s_meta);
                 continue;
             }
 
-            if KukuriScript::is_header_symbol(line) {
+            if Self::is_header_symbol(line) {
                 is_header = true;
                 continue;
             }
 
-            if KukuriScript::is_scene_end_symbol(line) {
-                scenes.push(Scene::from_scene_data(
-                    scene_title.clone(),
-                    scene_dialogs.clone()
-                ));
-
-                scene_title.clear();
-                scene_dialogs.clear();
+            if Self::is_scene_end_symbol(line) {
+                Self::scene_end_process(
+                    &mut scenes,
+                    &mut s_meta,
+                    &mut scene_dialogs
+                );
+                continue;
             }
 
-            let kind = KukuriScript::get_dialog_kind(line);
+            let kind = Self::get_dialog_kind(line);
             let (id, args) = match kind {
-                DialogKind::Dialog => KukuriScript::get_dialog_data(line),
-                DialogKind::Command => KukuriScript::get_command_data(line),
+                DialogKind::Dialog => {
+                    s_meta.dialog_count_up();
+                    Self::dialog_process(line, &s_meta)
+                },
+                DialogKind::Command => Self::get_command_data(line),
                 DialogKind::Choices => {
                     let id = String::from("choices");
                     let body = vec![DialogBody::Text(String::from("test"))];
@@ -70,8 +102,76 @@ impl KukuriScript {
             scene_dialogs.push(Dialog::from_dialog_data(kind, id, args));
         }
 
+        // after endline
+        if !scene_dialogs.is_empty() {
+            Self::scene_end_process(
+                &mut scenes,
+                &mut s_meta,
+                &mut scene_dialogs
+            );
+        }
+
         // temporary return
         scenes
+    }
+
+    /**
+     * header_process
+     * return: is_header
+     */
+    fn header_process(line: &str, s_meta: &mut SceneMetaData) -> bool {
+        // Header symbol check
+        if Self::is_header_symbol(line) {
+            return false
+        }
+
+
+        let (header_id, header_body) = Self::header_split(line);
+
+        if header_id == "title" {
+            let title_chars: Vec<char> = header_body.chars().collect();
+            if title_chars[0] == '\'' || title_chars[0] == '"' {
+                let max = title_chars.len() - 1;
+                let title: String = title_chars.iter()
+                .enumerate()
+                .filter(|&(i, _)| i > 0 && i < max)
+                .map(|(_, c)| c)
+                .collect();
+                s_meta.set_scene_title(&title);
+            }
+        }
+
+        return true
+    }
+
+    fn scene_end_process(
+        scenes: &mut Vec<Scene>,
+        s_meta: &mut SceneMetaData,
+        scene_dialogs: &mut Vec<Dialog>
+    ) {
+        scenes.push(Scene::from_scene_data(
+            s_meta.scene_title.clone(),
+            scene_dialogs.clone()
+        ));
+
+        s_meta.clear();
+        scene_dialogs.clear();
+    }
+
+    fn dialog_process(line: &str, s_meta: &SceneMetaData) -> (String, Vec<DialogBody>) {
+        let mut iter = line.splitn(2, ':');
+
+        let s0 = iter.next().unwrap_or("").trim();
+        let s1 = iter.next().unwrap_or("").trim();
+
+        let talker = if !s1.is_empty() { s0 } else { "unknown" };
+        let body = vec![DialogBody::Text(
+            String::from(if !s1.is_empty() { s1 } else { s0 } )
+        )];
+
+        let id = format!("{}_{}", s_meta.dialog_label(), talker);
+
+        (id, body)
     }
 
     fn is_header_symbol(line: &str) -> bool {
@@ -109,7 +209,7 @@ impl KukuriScript {
 
         let id = iter.next().unwrap_or("");
         let body = iter.next().unwrap_or("");
-        (id, body)
+        (id.trim(), body.trim())
     }
 
     fn trim_comment(line: &str) -> &str {
@@ -131,19 +231,6 @@ impl KukuriScript {
         match symbol_idx {
             Some((i, _)) => line.split_at(i).0,
             None => line,
-        }
-    }
-
-    fn get_dialog_data(line: &str) -> (String, Vec<DialogBody>) {
-        let mut iter = line.splitn(2, ':');
-
-        let id = String::from(iter.next().unwrap_or("").trim());
-        let body = String::from(iter.next().unwrap_or("").trim());
-
-        if !body.is_empty() {
-            (id, vec![DialogBody::Text(body)])
-        } else {
-            (String::new(), vec![DialogBody::Text(id)])
         }
     }
 
@@ -185,18 +272,22 @@ impl KukuriScript {
 
 #[cfg(test)]
 mod tests {
-    use super::KukuriScript;
+    use super::{KukuriScript, SceneMetaData};
     use crate::core::dialog::{DialogBody, DialogKind};
 
     #[test]
     fn test_get_dialog_data() {
+        let mut s_meta = SceneMetaData::new();
+        s_meta.dialog_count_up();
+        s_meta.set_scene_title("DialogTest");
+
         let tests = [
-            ("A: test dialog", (String::from("A"), vec![DialogBody::Text(String::from("test dialog"))])),
-            ("non-talker dialog", (String::new(), vec![DialogBody::Text(String::from("non-talker dialog"))]))
+            ("A: test dialog", (String::from("DialogTest_1_A"), vec![DialogBody::Text(String::from("test dialog"))])),
+            ("non-talker dialog", (String::from("DialogTest_1_unknown"), vec![DialogBody::Text(String::from("non-talker dialog"))]))
         ];
 
         for &(src, ref expected) in &tests {
-            let a = &KukuriScript::get_dialog_data(src);
+            let a = &KukuriScript::dialog_process(src, &s_meta);
             assert_eq!(expected.0, a.0);
             assert_eq!(expected.1, a.1);
         }
