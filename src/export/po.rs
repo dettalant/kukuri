@@ -1,13 +1,6 @@
 use crate::core::dialog::{Scene, DialogKind, DialogBody};
 
-const PO_BEGINNING_LINES: &str = "\
-msgid \"\"
-msgstr \"\"
-\"Last-Translator: Automatically generated\\n\"
-\"Language-Team: none\\n\"
-\"MIME-Version: 1.0\\n\"
-\"Content-Type: text/plain; charset=UTF-8\\n\"
-\"Plural-Forms: nplurals=1; plural=0;\\n\"";
+const DEFAULT_PO_TEMPLATE: &'static str = include_str!("../templates/po");
 
 pub struct Po;
 
@@ -46,11 +39,13 @@ impl Po {
 
 
     pub fn gen_init_string(locale: &str) -> String {
-        format!("{}\n\"Language: {}\\n\"\n\n", PO_BEGINNING_LINES, locale)
+        let mut s = DEFAULT_PO_TEMPLATE.replace("$LOCALE", locale);
+        s.push('\n');
+        s
     }
 
     pub fn gen_msgid(s: &str) -> String {
-        format!("msgid \"{}\"\n", Self::quote_escape(s))
+        format!("\nmsgid \"{}\"\n", Self::quote_escape(s))
     }
 
     pub fn gen_msgstr(s: &str) -> String {
@@ -74,10 +69,10 @@ msgid \"\"
 msgstr \"\"
 \"Last-Translator: Automatically generated\\n\"
 \"Language-Team: none\\n\"
+\"Language: ja\\n\"
 \"MIME-Version: 1.0\\n\"
 \"Content-Type: text/plain; charset=UTF-8\\n\"
 \"Plural-Forms: nplurals=1; plural=0;\\n\"
-\"Language: ja\\n\"
 
 ";
         assert_eq!(expected, Po::gen_init_string("ja"));
