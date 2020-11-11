@@ -1,6 +1,6 @@
 use crate::core::dialog::{Dialog, DialogBody, DialogKind, Scene};
 
-struct SceneMetaData{
+struct SceneProcessData{
     scene_title: String,
     nest_lv: usize,
     idxs: Vec<usize>,
@@ -9,7 +9,7 @@ struct SceneMetaData{
     nest_choices: Vec<(u32, u32)>,
 }
 
-impl SceneMetaData {
+impl SceneProcessData {
     pub fn new() -> Self {
         Self {
             scene_title: String::new(),
@@ -58,7 +58,7 @@ impl KukuriScript {
         let mut scenes: Vec<Scene> = Vec::new();
         let mut is_header = false;
         let mut scene_dialogs: Vec<Dialog> = Vec::new();
-        let mut s_meta = SceneMetaData::new();
+        let mut s_meta = SceneProcessData::new();
 
         for full_line in content.lines() {
             let line = Self::trim_comment(full_line.trim());
@@ -119,7 +119,7 @@ impl KukuriScript {
      * header_process
      * return: is_header
      */
-    fn header_process(line: &str, s_meta: &mut SceneMetaData) -> bool {
+    fn header_process(line: &str, s_meta: &mut SceneProcessData) -> bool {
         // Header symbol check
         if Self::is_header_symbol(line) {
             return false
@@ -146,7 +146,7 @@ impl KukuriScript {
 
     fn scene_end_process(
         scenes: &mut Vec<Scene>,
-        s_meta: &mut SceneMetaData,
+        s_meta: &mut SceneProcessData,
         scene_dialogs: &mut Vec<Dialog>
     ) {
         scenes.push(Scene::from_scene_data(
@@ -158,7 +158,7 @@ impl KukuriScript {
         scene_dialogs.clear();
     }
 
-    fn dialog_process(line: &str, s_meta: &SceneMetaData) -> (String, Vec<DialogBody>) {
+    fn dialog_process(line: &str, s_meta: &SceneProcessData) -> (String, Vec<DialogBody>) {
         let mut iter = line.splitn(2, ':');
 
         let s0 = iter.next().unwrap_or("").trim();
@@ -272,12 +272,12 @@ impl KukuriScript {
 
 #[cfg(test)]
 mod tests {
-    use super::{KukuriScript, SceneMetaData};
+    use super::{KukuriScript, SceneProcessData};
     use crate::core::dialog::{DialogBody, DialogKind};
 
     #[test]
     fn test_get_dialog_data() {
-        let mut s_meta = SceneMetaData::new();
+        let mut s_meta = SceneProcessData::new();
         s_meta.dialog_count_up();
         s_meta.set_scene_title("DialogTest");
 

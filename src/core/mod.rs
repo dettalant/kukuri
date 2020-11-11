@@ -102,6 +102,7 @@ impl Kukuri {
                 L10nExportType::Po => Po::export_string(&self.scenes, locale),
             };
 
+            // TODO: create export directory feature
             utils::write_file(path.as_ref(), &s).expect("Unable to write file.");
         }
 
