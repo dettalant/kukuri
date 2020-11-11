@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use serde::{Serialize, Deserialize};
 use toml;
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, Ord, PartialEq, PartialOrd)]
 #[serde(default)]
 pub struct Config {
     pub use_l10n_output: bool,

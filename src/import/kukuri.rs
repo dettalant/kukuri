@@ -1,6 +1,6 @@
 use crate::core::dialog::{Dialog, DialogBody, DialogKind, Scene};
 
-struct SceneProcessData{
+struct SceneProcessData {
     scene_title: String,
     nest_lv: usize,
     idxs: Vec<usize>,

@@ -1,11 +1,11 @@
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum DialogKind {
     Dialog,
     Command,
     Choices,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum DialogBody {
     // Text(DialogBody || CommandArg)
     Text(String),
@@ -13,14 +13,14 @@ pub enum DialogBody {
     // Choice(String, Vec<Dialog>),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Dialog {
     pub kind: DialogKind,
     // if DialogKind::Dialog => Dialog label e.g. "SceneTitle_idx_talker"
     // if DialogKind::Command => CommandName
     // if DialogKind::Choices => Choice label e.g. "SceneTitle_idx_C1L2"
     pub id: String,
-    pub args: Vec<DialogBody>
+    pub args: Vec<DialogBody>,
 }
 
 impl Dialog {
@@ -33,15 +33,11 @@ impl Dialog {
     // }
 
     pub fn from_dialog_data(kind: DialogKind, id: String, args: Vec<DialogBody>) -> Self {
-        Dialog {
-            kind,
-            id,
-            args
-        }
+        Dialog { kind, id, args }
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Scene {
     // SceneTitle
     pub title: String,
@@ -63,10 +59,7 @@ impl Scene {
     // }
 
     pub fn from_scene_data(title: String, dialogs: Vec<Dialog>) -> Self {
-        Scene {
-            title,
-            dialogs,
-        }
+        Scene { title, dialogs }
     }
 }
 
@@ -74,7 +67,7 @@ impl Default for Scene {
     fn default() -> Self {
         Scene {
             title: String::new(),
-            dialogs: Vec::new()
+            dialogs: Vec::new(),
         }
     }
 }

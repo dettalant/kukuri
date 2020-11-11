@@ -39,7 +39,9 @@ fn main() {
         kukuri.import(path)
     }
 
-    if kukuri.conf.use_l10n_output {
-        kukuri.l10n_export();
-    }
+    // kukuri.test_print();
+
+    // if kukuri.conf.use_l10n_output {
+    //     kukuri.l10n_export();
+    // }
 }

@@ -1,4 +1,5 @@
 pub mod kukuri;
+pub mod kukuri_script;
 
 const DEFAULT_FALLBACK_TYPE: ImportType = ImportType::KukuriScript;
 

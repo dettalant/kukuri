@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use dialog::Scene;
 use crate::config::Config;
 use crate::utils;
-use crate::import::{ImportType, kukuri::KukuriScript};
+use crate::import::{ImportType, kukuri::KukuriScript, kukuri_script};
 use crate::export::{L10nExportType, po::Po};
 
 #[derive(Debug)]
@@ -36,6 +36,10 @@ impl Kukuri {
         self.conf.l10n_output_dir = new_dir;
     }
 
+    pub fn test_print(&self) {
+        println!("kukuri: {:#?}", self);
+    }
+
 
     fn parse(&mut self, content: &str, ext: &str) {
         let import_type = ImportType::from_extension(
@@ -56,6 +60,9 @@ impl Kukuri {
         };
 
         self.scenes.append(&mut scenes);
+
+        // NOTE: test area
+        kukuri_script::KukuriScript::parse(content);
     }
 
     pub fn import<P: AsRef<Path>>(&mut self, path: P) {
