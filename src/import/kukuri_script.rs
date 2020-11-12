@@ -217,7 +217,13 @@ impl SceneProcessData {
     pub fn choice_idx_count_up(&mut self) {
         let idxs = &mut self.choice_idxs;
         let past_nest_lv = idxs.len();
+
+        if self.nest_lv == 0 {
+            return;
+        }
+
         let i = self.nest_lv - 1;
+
         idxs.truncate(self.nest_lv);
 
         if past_nest_lv > self.nest_lv {
@@ -404,11 +410,26 @@ mod tests {
     fn test_dialog_count_up() {
         let mut sp_data = SceneProcessData::new();
 
-        let tests = [Vec::new(), vec![1], vec![2], vec![3], vec![4], vec![5]];
+        let tests = [Vec::new(), vec![0], vec![1], vec![2], vec![3], vec![4]];
 
         for expected in &tests {
             assert_eq!(*expected, sp_data.dialog_idxs);
-            sp_data.dialog_count_up()
+            sp_data.dialog_count_up();
+        }
+
+        sp_data.nest_lv_count_up();
+        let tests2 = [vec![5], vec![5, 0], vec![5, 1], vec![5, 2]];
+        for expected in &tests2 {
+            assert_eq!(*expected, sp_data.dialog_idxs);
+            sp_data.dialog_count_up();
+        }
+
+        sp_data.nest_lv_count_down(0);
+        sp_data.truncate_idxs(0);
+        let tests3 = [vec![5], vec![6], vec![7], vec![8]];
+        for expected in &tests3 {
+            assert_eq!(*expected, sp_data.dialog_idxs);
+            sp_data.dialog_count_up();
         }
     }
 
@@ -461,5 +482,47 @@ mod tests {
             // println!("test_parse_indent_lv: {}", sp_data.latest_indent_cnt());
             assert_eq!(expected, sp_data.parse_indent_lv(src));
         });
+    }
+
+    #[test]
+    fn test_gen_dialog_label() {
+        let mut sp_data = SceneProcessData::new();
+        sp_data.dialog_idxs.push(5);
+        sp_data.choice_idxs.push((2, 3));
+        assert_eq!("UnknownScene_6_C3L4", sp_data.gen_dialog_label());
+
+        sp_data.dialog_idxs.push(2);
+        sp_data.choice_idxs.push((8, 5));
+        assert_eq!("UnknownScene_6_C3L4_3_C9L6", sp_data.gen_dialog_label());
+
+        sp_data.dialog_idxs.clear();
+        sp_data.dialog_idxs.push(2);
+        assert_eq!("UnknownScene_3_C3L4", sp_data.gen_dialog_label());
+
+        sp_data.choice_idxs.clear();
+        assert_eq!("UnknownScene_3", sp_data.gen_dialog_label());
+    }
+
+    #[test]
+    fn test_choice_idx_count_up() {
+        let mut sp_data = SceneProcessData::new();
+        sp_data.choice_idx_count_up();
+        assert_eq!(Vec::<(usize, usize)>::new(), sp_data.choice_idxs);
+
+        sp_data.nest_lv_count_up();
+        sp_data.choice_idx_count_up();
+        assert_eq!(vec![(0, 0)], sp_data.choice_idxs);
+        sp_data.choice_idx_count_up();
+        assert_eq!(vec![(0, 1)], sp_data.choice_idxs);
+
+        sp_data.nest_lv_count_up();
+        sp_data.choice_idx_count_up();
+        assert_eq!(vec![(0, 1), (0, 0)], sp_data.choice_idxs);
+        sp_data.choice_idx_count_up();
+        assert_eq!(vec![(0, 1), (0, 1)], sp_data.choice_idxs);
+
+        sp_data.nest_lv_count_down(1);
+        sp_data.choice_idx_count_up();
+        assert_eq!(vec![(1, 0)], sp_data.choice_idxs);
     }
 }
