@@ -206,7 +206,7 @@ impl SceneProcessData {
     }
 
     // pub fn meta_idx_count_up(&mut self) {
-    //     let idxs = &mut self.meta_idxs;
+    //     let idxs = &mut self.compiled_idxs;
     //     if self.nest_lv < idxs.len() {
     //         idxs[self.nest_lv] += 1;
     //     } else {
@@ -257,13 +257,18 @@ impl SceneProcessData {
         self.line_cnt += 1;
     }
 
+    // return: [di, ci, li, di, ci, li...]
+    //       : di = dialog_idx, ci = choice_idx, li = choice_label_idx
+    pub fn compiled_idxs(&self) -> Vec<usize> {
+        self.dialog_idxs
+            .iter()
+            .zip(self.choice_idxs.iter())
+            .flat_map(|(di, (ci, li))| vec![*di, *ci, *li])
+            .collect()
+    }
+
     fn latest_indent_cnt(&self) -> usize {
-        let l = self.indent_cnts.len();
-        if l > 0 {
-            self.indent_cnts[l - 1]
-        } else {
-            0
-        }
+        *self.indent_cnts.last().unwrap_or(&0)
     }
 
     pub fn parse_indent_lv(&mut self, line: &str) -> usize {
@@ -277,6 +282,7 @@ impl SceneProcessData {
             let pos = self.indent_cnts.iter().rposition(|&x| indent_cnt >= x);
 
             match pos {
+                // adapt range to self.indent_cnts.len()
                 Some(n) => n + 1,
                 None => 0,
             }
@@ -524,5 +530,19 @@ mod tests {
         sp_data.nest_lv_count_down(1);
         sp_data.choice_idx_count_up();
         assert_eq!(vec![(1, 0)], sp_data.choice_idxs);
+    }
+
+    #[test]
+    fn test_compiled_idxs() {
+        let mut sp_data = SceneProcessData::new();
+        assert_eq!(Vec::<usize>::new(), sp_data.compiled_idxs());
+
+        sp_data.dialog_idxs.push(5);
+        sp_data.choice_idxs.push((2, 3));
+        assert_eq!(vec![5, 2, 3], sp_data.compiled_idxs());
+
+        sp_data.dialog_idxs.push(8);
+        sp_data.choice_idxs.push((5, 2));
+        assert_eq!(vec![5, 2, 3, 8, 5, 2], sp_data.compiled_idxs());
     }
 }
