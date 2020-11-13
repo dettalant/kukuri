@@ -120,11 +120,7 @@ impl KukuriScript {
         let s1 = iter.next().unwrap_or("").trim();
 
         let talker = if !s1.is_empty() { s0 } else { "unknown" };
-        let body = vec![DialogBody::Text(String::from(if !s1.is_empty() {
-            s1
-        } else {
-            s0
-        }))];
+        let body = vec![DialogBody::gen_text(if !s1.is_empty() { s1 } else { s0 })];
 
         let id = format!("{}_{}", sp_data.gen_dialog_label(), talker);
 
@@ -137,12 +133,7 @@ impl KukuriScript {
         let mut iter = cmd_str.split_whitespace();
 
         let id = String::from(iter.nth(0).unwrap_or(""));
-        let args: Vec<DialogBody> = iter
-            .map(|s| {
-                let body = String::from(s);
-                DialogBody::Text(body)
-            })
-            .collect();
+        let args: Vec<DialogBody> = iter.map(|s| DialogBody::gen_text(s)).collect();
 
         Dialog::from_dialog_data(DialogKind::Command, id, args)
     }

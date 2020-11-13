@@ -17,10 +17,6 @@ impl DialogBody {
     pub fn gen_text<T: AsRef<str>>(s: T) -> Self {
         Self::Text(String::from(s.as_ref()))
     }
-
-    pub fn gen_choice(cd: ChoiceData) -> Self {
-        Self::Choice(cd)
-    }
 }
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -34,6 +30,7 @@ pub struct Dialog {
 }
 
 impl Dialog {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Dialog {
             kind: DialogKind::Dialog,
@@ -111,12 +108,12 @@ impl Scene {
     //     }
     // }
 
-    pub fn from_scene_data<T: AsRef<str>>(title: T, dialogs: Vec<Dialog>) -> Self {
-        Scene {
-            title: String::from(title.as_ref()),
-            dialogs,
-        }
-    }
+    // pub fn from_scene_data<T: AsRef<str>>(title: T, dialogs: Vec<Dialog>) -> Self {
+    //     Scene {
+    //         title: String::from(title.as_ref()),
+    //         dialogs,
+    //     }
+    // }
 
     pub fn inner_dialogs_as_mut(&mut self, inner_scene_idxs: &mut Vec<usize>) -> &mut Vec<Dialog> {
         Self::retrieve_inner_dialogs_as_mut(&mut self.dialogs, inner_scene_idxs)

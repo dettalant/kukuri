@@ -1,4 +1,3 @@
-pub mod kukuri;
 pub mod kukuri_script;
 
 const DEFAULT_FALLBACK_TYPE: ImportType = ImportType::KukuriScript;
@@ -6,7 +5,7 @@ const DEFAULT_FALLBACK_TYPE: ImportType = ImportType::KukuriScript;
 pub enum ImportType {
     KukuriScript,
     Yarn,
-    Ink
+    Ink,
 }
 
 impl ImportType {
@@ -15,7 +14,7 @@ impl ImportType {
             "kukuri" => ImportType::KukuriScript,
             "yarn" => ImportType::Yarn,
             "ink" => ImportType::Ink,
-            _ => DEFAULT_FALLBACK_TYPE
+            _ => DEFAULT_FALLBACK_TYPE,
         }
     }
 
@@ -25,7 +24,7 @@ impl ImportType {
             "kkr" => ImportType::KukuriScript,
             "yarn" => ImportType::Yarn,
             "ink" => ImportType::Ink,
-            _ => fallback
+            _ => fallback,
         }
     }
 }

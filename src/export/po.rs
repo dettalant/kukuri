@@ -134,7 +134,7 @@ msgstr \"てててすと\"
         let d1 = Dialog::from_dialog_data(
             DialogKind::Choices,
             "",
-            vec![DialogBody::gen_choice(cd0), DialogBody::gen_choice(cd1)],
+            vec![DialogBody::Choice(cd0), DialogBody::Choice(cd1)],
         );
 
         let expected1 = "\
