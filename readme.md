@@ -25,3 +25,4 @@ A versatile dialog text compiler for game develop.
 * More efficient export type for godot
 * YarnSpinner/Ink script parse method
 * Fluent/CSV export
+* Custom export template support
