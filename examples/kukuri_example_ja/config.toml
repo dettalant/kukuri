@@ -10,6 +10,10 @@ default_script_type = "kukuri"
 # if false => output into one bundle file
 separate_output = true
 
+# minify output setting
+# if true => export minify json/gd file
+minified_output = false
+
 # Dialog text and command data output types.
 # Allow value: "gd", "json"
 outputs = ["gd", "json"]

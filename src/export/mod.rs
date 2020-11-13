@@ -1,3 +1,4 @@
+pub mod gd;
 pub mod json;
 pub mod po;
 

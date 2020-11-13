@@ -2,7 +2,7 @@
 name = "kukuri"
 version = "0.1.0"
 authors = ["dettalant <lilac@dettalant.com>"]
-description = "A dialog text compiler independence of specific game engine."
+description = "A versatile dialog text compiler for game develop."
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

@@ -37,7 +37,7 @@ impl Serialize for DialogBody {
     }
 }
 
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Deserialize)]
 pub struct Dialog {
     pub kind: DialogKind,
     // if DialogKind::Dialog => Dialog id e.g. "SceneTitle_idx_talker"
@@ -63,6 +63,27 @@ impl Dialog {
             id: String::from(id.as_ref()),
             args,
         }
+    }
+}
+
+impl Serialize for Dialog {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let is_exclude_orig_text =
+            std::env::var("KUKURI_IS_EXCLUDE_ORIG_TEXT").unwrap_or(String::from("FALSE")) == "TRUE"
+                && self.kind == DialogKind::Dialog;
+        let s_len = if is_exclude_orig_text { 2 } else { 3 };
+        let mut ss = serializer.serialize_struct("Dialog", s_len)?;
+        ss.serialize_field("id", &self.id)?;
+        ss.serialize_field("kind", &self.kind)?;
+
+        if !is_exclude_orig_text {
+            ss.serialize_field("args", &self.args)?;
+        }
+
+        ss.end()
     }
 }
 

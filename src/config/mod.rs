@@ -1,12 +1,13 @@
 use crate::utils;
+use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
-use serde::{Serialize, Deserialize};
 use toml;
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, Ord, PartialEq, PartialOrd)]
 #[serde(default)]
 pub struct Config {
     pub use_l10n_output: bool,
+    pub minified_output: bool,
     pub separate_output: bool,
     pub orig_locale: String,
     pub default_script_type: String,
@@ -29,11 +30,10 @@ impl Config {
     }
 
     pub fn from_file<P: AsRef<Path>>(path: P) -> Self {
-        let s = utils::read_file(path.as_ref())
-            .unwrap_or_else(|_| {
-                eprintln!("Failed to load: {}", path.as_ref().display());
-                String::new()
-            });
+        let s = utils::read_file(path.as_ref()).unwrap_or_else(|_| {
+            eprintln!("Failed to load: {}", path.as_ref().display());
+            String::new()
+        });
         let mut conf = Config::parse(&s).unwrap_or_else(|e| {
             eprintln!("Toml Parse Error: {:?}", e);
             Config::new()
@@ -45,20 +45,25 @@ impl Config {
         conf
     }
 
-    fn get_relative_dir<P: AsRef<Path>, P2: AsRef<Path>>(base_path: &P, append_path: &P2) -> PathBuf {
+    fn get_relative_dir<P: AsRef<Path>, P2: AsRef<Path>>(
+        base_path: &P,
+        append_path: &P2,
+    ) -> PathBuf {
         let mut p = PathBuf::from(base_path.as_ref());
-        if !p.is_dir() { p.set_file_name("") };
+        if !p.is_dir() {
+            p.set_file_name("")
+        };
         p.push(append_path.as_ref());
         p
     }
 }
-
 
 impl Default for Config {
     fn default() -> Config {
         let current_dir = std::env::current_dir().expect("Failed get current directory.");
         Config {
             use_l10n_output: true,
+            minified_output: true,
             separate_output: true,
             orig_locale: String::from("en_US"),
             default_script_type: String::from("kukuri"),
@@ -80,7 +85,11 @@ mod tests {
         let tests = [
             ("/tmp", "./test", PathBuf::from("/tmp/test")),
             ("/tmp/", "./test", PathBuf::from("/tmp/test")),
-            ("/tmp/kukuri/not_found.file", "./test", PathBuf::from("/tmp/kukuri/test")),
+            (
+                "/tmp/kukuri/not_found.file",
+                "./test",
+                PathBuf::from("/tmp/kukuri/test"),
+            ),
             ("./", "src", PathBuf::from("./src")),
         ];
 
@@ -118,10 +127,7 @@ separate_output = false
         conf1.orig_locale = String::from("fr_FR");
         conf1.separate_output = false;
 
-        let tests = [
-            (conf_str0, Ok(conf0)),
-            (conf_str1, Ok(conf1)),
-        ];
+        let tests = [(conf_str0, Ok(conf0)), (conf_str1, Ok(conf1))];
 
         for &(src, ref expected) in &tests {
             assert_eq!(expected, &Config::parse(src));
