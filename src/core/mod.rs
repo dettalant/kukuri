@@ -1,24 +1,25 @@
 pub mod dialog;
 
 use crate::config::Config;
-use crate::export::{po::Po, L10nExportType};
+use crate::export::{json::Json, po::Po, ExportType, L10nExportType};
 use crate::import::{kukuri_script::KukuriScript, ImportType};
 use crate::utils;
-use dialog::Scene;
+use dialog::{Dialog, DialogBody, DialogKind, Scene};
 use std::path::{Path, PathBuf};
 
-#[derive(Debug)]
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Kukuri {
     pub conf: Config,
     pub scenes: Vec<Scene>,
 }
 
 impl Kukuri {
-    // pub fn new() -> Self {
-    //     Kukuri {
-    //         ..Default::default()
-    //     }
-    // }
+    #[allow(dead_code)]
+    pub fn new() -> Self {
+        Kukuri {
+            ..Default::default()
+        }
+    }
 
     pub fn from_config(conf: Config) -> Self {
         Kukuri {
@@ -65,15 +66,45 @@ impl Kukuri {
         };
     }
 
-    // pub fn export(self) {
-    //     if self.scenes.is_empty() { return };
-    //
-    //     for t in self.conf.outputs {
-    //
-    //     }
-    // }
+    pub fn export(&mut self) {
+        if self.scenes.is_empty() {
+            return;
+        };
 
-    pub fn l10n_export(self) {
+        if self.conf.use_l10n_output {
+            // Change serialize setting.
+            // if this var enable, ChoiceData.label has not serialized.
+            std::env::set_var("KUKURI_IS_EXCLUDE_ORIG_TEXT", "TRUE");
+
+            Self::exclude_orig_text(&mut self.scenes);
+        }
+
+        let mut exports: Vec<ExportType> = self
+            .conf
+            .outputs
+            .iter()
+            .map(|s| ExportType::parse(s))
+            .collect();
+
+        exports.dedup();
+
+        // export type
+        for et in exports {
+            let s = match et {
+                ExportType::Json => Json::export_string(&self.scenes),
+                // placeholder
+                _ => String::new(),
+            };
+
+            // TODO: multiple output feature
+            let mut path = self.conf.output_dir.clone();
+            path.push(format!("{}{}", "output", et.extension()));
+
+            utils::write_file(path.as_ref(), &s).expect("Unable to write file.");
+        }
+    }
+
+    pub fn l10n_export(&self) {
         if self.scenes.is_empty() || !self.conf.use_l10n_output {
             return;
         };
@@ -93,16 +124,43 @@ impl Kukuri {
                 .splitn(2, "_")
                 .nth(0)
                 .unwrap_or("en");
-            let ext = et.extension();
-            let mut path = self.conf.l10n_output_dir.clone();
-            path.push(format!("{}{}", locale, ext));
 
             let s = match et {
                 L10nExportType::Po => Po::export_string(&self.scenes, locale),
             };
 
-            // TODO: create export directory feature
+            let mut path = self.conf.l10n_output_dir.clone();
+            path.push(format!("{}{}", locale, et.extension()));
+
+            // TODO: make export directory feature
             utils::write_file(path.as_ref(), &s).expect("Unable to write file.");
+        }
+    }
+
+    fn exclude_orig_text(scenes: &mut Vec<Scene>) {
+        fn dialog_process(dialog: &mut Dialog) {
+            match dialog.kind {
+                DialogKind::Dialog => dialog.args.clear(),
+                DialogKind::Choices => dialog
+                    .args
+                    .iter_mut()
+                    .for_each(|body| choices_process(body)),
+                _ => {}
+            }
+        }
+
+        fn choices_process(body: &mut DialogBody) {
+            if let DialogBody::Choice(ref mut cd) = body {
+                for dialog in &mut cd.dialogs {
+                    dialog_process(dialog);
+                }
+            }
+        }
+
+        for scene in scenes {
+            for dialog in &mut scene.dialogs {
+                dialog_process(dialog)
+            }
         }
     }
 }
@@ -120,6 +178,7 @@ impl Default for Kukuri {
 mod tests {
     use super::Kukuri;
     use crate::config::Config;
+    use crate::core::dialog::{ChoiceData, Dialog, DialogBody, DialogKind, Scene};
     use std::env;
 
     #[test]
@@ -152,5 +211,57 @@ mod tests {
         for &(ref src, ref expected) in &tests {
             assert_eq!(*src, *expected.conf.l10n_output_dir);
         }
+    }
+
+    #[test]
+    fn test_exclude_orig_text() {
+        let (dkd, dkc) = (DialogKind::Dialog, DialogKind::Choices);
+        let mut kkr = Kukuri::new();
+        let mut cd = ChoiceData::new();
+        cd.dialogs = vec![
+            Dialog::from_dialog_data(
+                dkd,
+                "TestInnerDialog0",
+                vec![DialogBody::gen_text("いんなーだいあろぐてすと0")],
+            ),
+            Dialog::from_dialog_data(
+                dkd,
+                "TestInnerDialog1",
+                vec![DialogBody::gen_text("いんなーだいあろぐてすと1")],
+            ),
+        ];
+
+        let mut scene = Scene::new();
+        scene.dialogs = vec![
+            Dialog::from_dialog_data(
+                dkd,
+                "TestDialog0",
+                vec![DialogBody::gen_text("だいあろぐてすと0")],
+            ),
+            Dialog::from_dialog_data(
+                dkd,
+                "TestDialog1",
+                vec![DialogBody::gen_text("だいあろぐてすと1")],
+            ),
+            Dialog::from_dialog_data(dkc, "TestChoices", vec![DialogBody::Choice(cd)]),
+        ];
+        kkr.scenes = vec![scene];
+
+        let mut expected_scene = Scene::new();
+        let mut expected_cd = ChoiceData::new();
+        expected_cd.dialogs = vec![
+            Dialog::from_dialog_data(dkd, "TestInnerDialog0", Vec::new()),
+            Dialog::from_dialog_data(dkd, "TestInnerDialog1", Vec::new()),
+        ];
+
+        expected_scene.dialogs = vec![
+            Dialog::from_dialog_data(dkd, "TestDialog0", Vec::new()),
+            Dialog::from_dialog_data(dkd, "TestDialog1", Vec::new()),
+            Dialog::from_dialog_data(dkc, "TestChoices", vec![DialogBody::Choice(expected_cd)]),
+        ];
+
+        Kukuri::exclude_orig_text(&mut kkr.scenes);
+
+        assert_eq!(vec![expected_scene], kkr.scenes);
     }
 }

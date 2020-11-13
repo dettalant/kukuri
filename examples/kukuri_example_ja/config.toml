@@ -12,7 +12,7 @@ separate_output = true
 
 # Dialog text and command data output types.
 # Allow value: "gd", "json"
-outputs = ["gd"]
+outputs = ["gd", "json"]
 
 # =====================
 # Localization Settings

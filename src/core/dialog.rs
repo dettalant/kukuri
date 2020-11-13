@@ -1,11 +1,16 @@
-#[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+use serde::ser::{SerializeStruct, Serializer};
+use serde::{Deserialize, Serialize};
+use serde_repr::{Deserialize_repr, Serialize_repr};
+
+#[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize_repr, Deserialize_repr)]
+#[repr(u8)]
 pub enum DialogKind {
     Dialog,
     Command,
     Choices,
 }
 
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Deserialize)]
 pub enum DialogBody {
     // Text(DialogBody || CommandArg)
     Text(String),
@@ -19,7 +24,20 @@ impl DialogBody {
     }
 }
 
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+impl Serialize for DialogBody {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match *self {
+            // flatten serialize output
+            Self::Text(ref s) => serializer.serialize_str(s),
+            Self::Choice(ref cd) => serializer.serialize_newtype_struct("ChoiceData", cd),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct Dialog {
     pub kind: DialogKind,
     // if DialogKind::Dialog => Dialog id e.g. "SceneTitle_idx_talker"
@@ -48,9 +66,9 @@ impl Dialog {
     }
 }
 
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Deserialize)]
 pub struct ChoiceData {
-    // Choice id e.g. "SceneTitle_idx_C1L2"
+    // Choice id e.g. "SceneTitle_1_C1L2"
     pub id: String,
     // Choice label text
     pub label: String,
@@ -83,7 +101,27 @@ impl ChoiceData {
     }
 }
 
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+impl Serialize for ChoiceData {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let is_exclude_orig_text =
+            std::env::var("KUKURI_IS_EXCLUDE_ORIG_TEXT").unwrap_or(String::from("FALSE")) == "TRUE";
+        let s_len = if is_exclude_orig_text { 2 } else { 3 };
+        let mut ss = serializer.serialize_struct("ChoiceData", s_len)?;
+        ss.serialize_field("id", &self.id)?;
+
+        if !is_exclude_orig_text {
+            ss.serialize_field("label", &self.label)?;
+        }
+
+        ss.serialize_field("dialogs", &self.dialogs)?;
+        ss.end()
+    }
+}
+
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct Scene {
     // SceneTitle
     pub title: String,

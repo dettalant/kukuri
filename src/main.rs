@@ -41,4 +41,6 @@ fn main() {
     if kukuri.conf.use_l10n_output {
         kukuri.l10n_export();
     }
+
+    kukuri.export()
 }
