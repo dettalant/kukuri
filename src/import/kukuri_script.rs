@@ -1,11 +1,14 @@
-use crate::core::dialog::{Dialog, DialogBody, DialogKind, Scene};
+use crate::core::dialog::{ChoiceData, Dialog, DialogBody, DialogKind, Scene};
 use serde::{Deserialize, Serialize};
 
 pub struct KukuriScript;
 
 impl KukuriScript {
-    pub fn parse(content: &str) {
+    pub fn parse(content: &str) -> Vec<Scene> {
         let mut sp_data = SceneProcessData::new();
+        let mut scenes: Vec<Scene> = Vec::new();
+        // current scene
+        let mut sc = Scene::new();
 
         for full_line in content.lines() {
             sp_data.line_count_up();
@@ -16,7 +19,7 @@ impl KukuriScript {
             };
 
             if sp_data.is_header {
-                Self::header_process(line, &mut sp_data);
+                Self::header_process(line, &mut sp_data, &mut sc);
                 continue;
             }
 
@@ -26,9 +29,8 @@ impl KukuriScript {
             }
 
             if Self::is_scene_end_symbol(line) {
-                println!("sp_data: {:?}", sp_data);
-                sp_data.reset();
                 // scene end
+                Self::scene_end_process(&mut sp_data, &mut scenes, &mut sc);
                 continue;
             }
 
@@ -44,15 +46,24 @@ impl KukuriScript {
                     }
 
                     sp_data.dialog_count_up();
+
+                    // dialog push
+                    let target_dialogs = sc.inner_dialogs_as_mut(&mut sp_data.inner_scene_idxs());
+                    target_dialogs.push(Self::dialog_process(line, &sp_data));
                 }
                 DialogKind::Command => {
                     if indent_lv < sp_data.nest_lv {
                         sp_data.nest_lv_count_down(indent_lv);
                         sp_data.truncate_idxs(indent_lv);
                     }
+
+                    // command push
+                    let target_dialogs = sc.inner_dialogs_as_mut(&mut sp_data.inner_scene_idxs());
+                    target_dialogs.push(Self::command_process(line));
                 }
                 DialogKind::Choices => {
-                    if indent_lv >= sp_data.nest_lv {
+                    let is_choices_parent = indent_lv >= sp_data.nest_lv;
+                    if is_choices_parent {
                         sp_data.dialog_count_up();
                         sp_data.nest_lv_count_up();
                     } else {
@@ -60,28 +71,103 @@ impl KukuriScript {
                     }
 
                     sp_data.choice_idx_count_up();
+
+                    let mut idxs = sp_data.inner_scene_idxs();
+                    if is_choices_parent {
+                        // choices parent push
+                        let target_dialogs = sc.inner_parent_dialogs_as_mut(&mut idxs.clone());
+                        target_dialogs.push(Self::choices_parent_process(&sp_data));
+                    }
+
+                    // choice push
+                    let target_choice = sc.inner_choices_as_mut(&mut idxs);
+                    let cd = Self::choices_child_process(line, &sp_data);
+                    target_choice.args.push(DialogBody::Choice(cd));
                 }
             }
 
-            Self::debug_print(line, &sp_data);
+            // Self::debug_print(line, &sp_data);
         }
 
-        // after end of line
-        println!("sp_data: {:?}", sp_data);
-        sp_data.reset();
+        if !sc.dialogs.is_empty() {
+            Self::scene_end_process(&mut sp_data, &mut scenes, &mut sc);
+        }
+
+        scenes
     }
 
-    fn header_process(line: &str, sp_data: &mut SceneProcessData) {
+    fn header_process(line: &str, sp_data: &mut SceneProcessData, sc: &mut Scene) {
         // if line text is "+++", end header section.
         if Self::is_header_symbol(line) {
             let s = &sp_data.header_str;
             sp_data.meta_data.parse(s);
             sp_data.is_header = false;
+
+            if !sp_data.meta_data.title.is_empty() {
+                sc.title = sp_data.meta_data.title.clone();
+            }
             return;
         }
 
         sp_data.header_str.push_str(line);
         sp_data.header_str.push('\n');
+    }
+
+    fn dialog_process(line: &str, sp_data: &SceneProcessData) -> Dialog {
+        let mut iter = line.splitn(2, ':');
+
+        let s0 = iter.next().unwrap_or("").trim();
+        let s1 = iter.next().unwrap_or("").trim();
+
+        let talker = if !s1.is_empty() { s0 } else { "unknown" };
+        let body = vec![DialogBody::Text(String::from(if !s1.is_empty() {
+            s1
+        } else {
+            s0
+        }))];
+
+        let id = format!("{}_{}", sp_data.gen_dialog_label(), talker);
+
+        Dialog::from_dialog_data(DialogKind::Dialog, id, body)
+    }
+
+    fn command_process(line: &str) -> Dialog {
+        let cmd_str = line.splitn(2, '$').nth(1).unwrap_or("").trim();
+
+        let mut iter = cmd_str.split_whitespace();
+
+        let id = String::from(iter.nth(0).unwrap_or(""));
+        let args: Vec<DialogBody> = iter
+            .map(|s| {
+                let body = String::from(s);
+                DialogBody::Text(body)
+            })
+            .collect();
+
+        Dialog::from_dialog_data(DialogKind::Command, id, args)
+    }
+
+    fn choices_parent_process(sp_data: &SceneProcessData) -> Dialog {
+        let label = sp_data.gen_dialog_label();
+        let s = label.rsplitn(2, 'L').last().unwrap_or("Choices");
+        Dialog::from_dialog_data(DialogKind::Choices, s, Vec::new())
+    }
+
+    fn choices_child_process(line: &str, sp_data: &SceneProcessData) -> ChoiceData {
+        let (_, label) = line.trim_start().split_at(1);
+        let id = sp_data.gen_dialog_label();
+
+        ChoiceData::from_texts(id, label.trim())
+    }
+
+    fn scene_end_process(
+        sp_data: &mut SceneProcessData,
+        scenes: &mut Vec<Scene>,
+        current_scene: &mut Scene,
+    ) {
+        scenes.push(current_scene.clone());
+        sp_data.reset();
+        current_scene.reset();
     }
 
     fn is_header_symbol(line: &str) -> bool {
@@ -147,17 +233,17 @@ impl KukuriScript {
         }
     }
 
-    fn debug_print<T: AsRef<str>>(line: T, sp_data: &SceneProcessData) {
-        let print_str: String = line.as_ref().chars().take(16).collect();
-
-        println!(
-            "#{}: {:?} {} // {}",
-            sp_data.line_cnt,
-            sp_data.dialog_idxs,
-            print_str,
-            sp_data.gen_dialog_label()
-        );
-    }
+    // fn debug_print<T: AsRef<str>>(line: T, sp_data: &SceneProcessData) {
+    //     let print_str: String = line.as_ref().chars().take(16).collect();
+    //
+    //     println!(
+    //         "#{}: {:?} {} // {}",
+    //         sp_data.line_cnt,
+    //         sp_data.inner_scene_idxs(),
+    //         print_str,
+    //         sp_data.gen_dialog_label()
+    //     );
+    // }
 }
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -205,15 +291,6 @@ impl SceneProcessData {
         }
     }
 
-    // pub fn meta_idx_count_up(&mut self) {
-    //     let idxs = &mut self.compiled_idxs;
-    //     if self.nest_lv < idxs.len() {
-    //         idxs[self.nest_lv] += 1;
-    //     } else {
-    //         idxs.push(0);
-    //     }
-    // }
-
     pub fn choice_idx_count_up(&mut self) {
         let idxs = &mut self.choice_idxs;
         let past_nest_lv = idxs.len();
@@ -257,12 +334,14 @@ impl SceneProcessData {
         self.line_cnt += 1;
     }
 
-    // return: [di, ci, li, di, ci, li...]
-    //       : di = dialog_idx, ci = choice_idx, li = choice_label_idx
-    pub fn compiled_idxs(&self) -> Vec<usize> {
+    // return: [di, ci, li, di, ci, li...] if nest_lv > 0
+    //       : [] if nest_lv == 0
+    // where : di = dialog_idx, ci = choice_idx, li = choice_label_idx
+    pub fn inner_scene_idxs(&self) -> Vec<usize> {
         self.dialog_idxs
             .iter()
             .zip(self.choice_idxs.iter())
+            .take(self.nest_lv)
             .flat_map(|(di, (ci, li))| vec![*di, *ci, *li])
             .collect()
     }
@@ -533,16 +612,21 @@ mod tests {
     }
 
     #[test]
-    fn test_compiled_idxs() {
+    fn test_inner_scene_idxs() {
         let mut sp_data = SceneProcessData::new();
-        assert_eq!(Vec::<usize>::new(), sp_data.compiled_idxs());
+        assert_eq!(Vec::<usize>::new(), sp_data.inner_scene_idxs());
 
+        sp_data.nest_lv = 1;
         sp_data.dialog_idxs.push(5);
         sp_data.choice_idxs.push((2, 3));
-        assert_eq!(vec![5, 2, 3], sp_data.compiled_idxs());
+        assert_eq!(vec![5, 2, 3], sp_data.inner_scene_idxs());
 
+        sp_data.nest_lv = 2;
         sp_data.dialog_idxs.push(8);
         sp_data.choice_idxs.push((5, 2));
-        assert_eq!(vec![5, 2, 3, 8, 5, 2], sp_data.compiled_idxs());
+        assert_eq!(vec![5, 2, 3, 8, 5, 2], sp_data.inner_scene_idxs());
+
+        sp_data.nest_lv = 0;
+        assert_eq!(Vec::<usize>::new(), sp_data.inner_scene_idxs());
     }
 }

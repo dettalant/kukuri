@@ -1,11 +1,11 @@
 pub mod dialog;
 
-use std::path::{Path, PathBuf};
-use dialog::Scene;
 use crate::config::Config;
+use crate::export::{po::Po, L10nExportType};
+use crate::import::{kukuri_script::KukuriScript, ImportType};
 use crate::utils;
-use crate::import::{ImportType, kukuri::KukuriScript, kukuri_script};
-use crate::export::{L10nExportType, po::Po};
+use dialog::Scene;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
 pub struct Kukuri {
@@ -31,38 +31,26 @@ impl Kukuri {
         self.conf.output_dir = new_dir;
     }
 
-
     pub fn set_l10n_output_dir(&mut self, new_dir: PathBuf) {
         self.conf.l10n_output_dir = new_dir;
     }
 
-    pub fn test_print(&self) {
-        println!("kukuri: {:#?}", self);
-    }
-
-
     fn parse(&mut self, content: &str, ext: &str) {
-        let import_type = ImportType::from_extension(
-            ext,
-            &self.conf.default_script_type
-        );
+        let import_type = ImportType::from_extension(ext, &self.conf.default_script_type);
 
         let mut scenes: Vec<Scene> = match import_type {
             ImportType::Yarn => {
                 println!("Sorry, YarnSpinner script is not supported currently.");
                 Vec::new()
-            },
+            }
             ImportType::Ink => {
                 println!("Sorry, Ink script is not supported currently.");
                 Vec::new()
-            },
-            ImportType::KukuriScript => KukuriScript::parse(content)
+            }
+            ImportType::KukuriScript => KukuriScript::parse(content),
         };
 
         self.scenes.append(&mut scenes);
-
-        // NOTE: test area
-        kukuri_script::KukuriScript::parse(content);
     }
 
     pub fn import<P: AsRef<Path>>(&mut self, path: P) {
@@ -73,7 +61,7 @@ impl Kukuri {
 
         match utils::read_file(path.as_ref()) {
             Ok(s) => self.parse(&s, ext),
-            Err(e) => eprintln!("Failed to load {}: {:?}", path.as_ref().display(), e)
+            Err(e) => eprintln!("Failed to load {}: {:?}", path.as_ref().display(), e),
         };
     }
 
@@ -86,9 +74,14 @@ impl Kukuri {
     // }
 
     pub fn l10n_export(self) {
-        if self.scenes.is_empty() || !self.conf.use_l10n_output { return };
+        if self.scenes.is_empty() || !self.conf.use_l10n_output {
+            return;
+        };
 
-        let mut exports: Vec<L10nExportType> = self.conf.l10n_outputs.iter()
+        let mut exports: Vec<L10nExportType> = self
+            .conf
+            .l10n_outputs
+            .iter()
             .map(|s| L10nExportType::parse(s))
             .collect();
 
@@ -96,14 +89,13 @@ impl Kukuri {
 
         // export type
         for et in exports {
-            let locale = (self.conf.orig_locale.as_str()).splitn(2, "_")
+            let locale = (self.conf.orig_locale.as_str())
+                .splitn(2, "_")
                 .nth(0)
                 .unwrap_or("en");
             let ext = et.extension();
             let mut path = self.conf.l10n_output_dir.clone();
-            path.push(
-                format!("{}{}", locale, ext)
-            );
+            path.push(format!("{}{}", locale, ext));
 
             let s = match et {
                 L10nExportType::Po => Po::export_string(&self.scenes, locale),
@@ -112,7 +104,6 @@ impl Kukuri {
             // TODO: create export directory feature
             utils::write_file(path.as_ref(), &s).expect("Unable to write file.");
         }
-
     }
 }
 
@@ -124,7 +115,6 @@ impl Default for Kukuri {
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -141,10 +131,7 @@ mod tests {
         let mut kkr1 = Kukuri::from_config(Config::new());
         kkr1.set_output_dir(tmp_dir.clone());
 
-        let tests = [
-            (current_dir, kkr0),
-            (tmp_dir, kkr1),
-        ];
+        let tests = [(current_dir, kkr0), (tmp_dir, kkr1)];
 
         for (ref src, ref expected) in &tests {
             assert_eq!(*src, *expected.conf.output_dir);
@@ -160,10 +147,7 @@ mod tests {
         let mut kkr1 = Kukuri::from_config(Config::new());
         kkr1.set_l10n_output_dir(tmp_dir.clone());
 
-        let tests = [
-            (current_dir, kkr0),
-            (tmp_dir, kkr1),
-        ];
+        let tests = [(current_dir, kkr0), (tmp_dir, kkr1)];
 
         for &(ref src, ref expected) in &tests {
             assert_eq!(*src, *expected.conf.l10n_output_dir);
