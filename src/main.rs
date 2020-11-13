@@ -1,9 +1,9 @@
 mod cli;
-mod core;
-mod import;
 mod config;
-mod utils;
+mod core;
 mod export;
+mod import;
+mod utils;
 
 use std::path::PathBuf;
 
@@ -31,7 +31,6 @@ fn main() {
         kukuri.set_l10n_output_dir(new_dir)
     }
 
-
     let inputs: Vec<_> = matches.values_of("FILE").unwrap().collect();
     // println!("Using input files: {:?}", inputs);
 
@@ -39,9 +38,7 @@ fn main() {
         kukuri.import(path)
     }
 
-    // kukuri.test_print();
-
-    // if kukuri.conf.use_l10n_output {
-    //     kukuri.l10n_export();
-    // }
+    if kukuri.conf.use_l10n_output {
+        kukuri.l10n_export();
+    }
 }
