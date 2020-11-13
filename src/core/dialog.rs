@@ -72,6 +72,7 @@ impl Default for ChoiceData {
 }
 
 impl ChoiceData {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         ChoiceData::default()
     }
