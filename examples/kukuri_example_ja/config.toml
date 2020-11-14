@@ -18,9 +18,9 @@ minified_output = false
 # Allow value: "gd", "json"
 outputs = ["gd", "json"]
 
-# =====================
+#======================
 # Localization Settings
-# =====================
+#======================
 
 # if false => discard localization settings
 use_l10n_output = true
@@ -33,9 +33,9 @@ orig_locale = "ja_JP"
 # Allow value: "po"
 l10n_outputs = ["po"]
 
-# =====================
+#======================
 # Output Settings
-# =====================
+#======================
 
 output_dir = "./output"
 l10n_output_dir = "./locale"
