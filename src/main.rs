@@ -18,21 +18,16 @@ fn main() {
     let mut kukuri = core::Kukuri::from_config(conf);
 
     if let Some(path) = matches.value_of("dir") {
-        let new_dir = PathBuf::from(path)
-            .canonicalize()
-            .unwrap_or_else(|_| panic!("Can't find output directory: {}", path));
+        let new_dir = PathBuf::from(path);
         kukuri.set_output_dir(new_dir)
     }
 
     if let Some(path) = matches.value_of("l10n_dir") {
-        let new_dir = PathBuf::from(path)
-            .canonicalize()
-            .unwrap_or_else(|_| panic!("Can't find l10n output directory: {}", path));
+        let new_dir = PathBuf::from(path);
         kukuri.set_l10n_output_dir(new_dir)
     }
 
     let inputs: Vec<_> = matches.values_of("FILE").unwrap().collect();
-    // println!("Using input files: {:?}", inputs);
 
     for path in inputs {
         kukuri.import(path)

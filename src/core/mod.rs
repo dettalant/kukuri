@@ -77,6 +77,15 @@ impl Kukuri {
             std::env::set_var("KUKURI_IS_EXCLUDE_ORIG_TEXT", "TRUE");
         }
 
+        let output_dir = &self.conf.output_dir;
+        if !output_dir.exists() {
+            if let Err(e) = utils::mkdir_recursive(output_dir) {
+                eprintln!("Kukuri::export() make export dir error: {:?}", e);
+                println!("export skipped");
+                return;
+            }
+        }
+
         let mut exports: Vec<ExportType> = self
             .conf
             .outputs
@@ -96,10 +105,10 @@ impl Kukuri {
             };
 
             // TODO: multiple output feature
-            let mut path = self.conf.output_dir.clone();
+            let mut path = output_dir.clone();
             path.push(format!("{}{}", "output", et.extension()));
 
-            utils::write_file(path.as_ref(), &s).expect("Unable to write file.");
+            utils::write_file(path, &s).expect("Unable to write file.");
         }
     }
 
@@ -107,6 +116,15 @@ impl Kukuri {
         if self.scenes.is_empty() || !self.conf.use_l10n_output {
             return;
         };
+
+        let output_dir = &self.conf.l10n_output_dir;
+        if !output_dir.exists() {
+            if let Err(e) = utils::mkdir_recursive(output_dir) {
+                eprintln!("Kukuri::l10n_export() make export dir error: {:?}", e);
+                println!("l10n export skipped");
+                return;
+            }
+        }
 
         let mut exports: Vec<L10nExportType> = self
             .conf
@@ -128,11 +146,11 @@ impl Kukuri {
                 L10nExportType::Po => Po::export_string(&self.scenes, locale),
             };
 
-            let mut path = self.conf.l10n_output_dir.clone();
+            let mut path = output_dir.clone();
             path.push(format!("{}{}", locale, et.extension()));
 
             // TODO: make export directory feature
-            utils::write_file(path.as_ref(), &s).expect("Unable to write file.");
+            utils::write_file(path, &s).expect("Unable to write file.");
         }
     }
 }

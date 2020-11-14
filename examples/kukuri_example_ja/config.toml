@@ -3,7 +3,7 @@
 #======================
 
 # Default parse type setting for non-explicit extension file.
-# Allow value: "kukuri", "yarn", or "ink"
+# Allow value: "kukuri"
 default_script_type = "kukuri"
 
 # if true => separate each scene files
@@ -30,7 +30,7 @@ use_l10n_output = true
 orig_locale = "ja_JP"
 
 # Set Localization outputs
-# Allow value: "po", "fluent", or "csv"
+# Allow value: "po"
 l10n_outputs = ["po"]
 
 # =====================
