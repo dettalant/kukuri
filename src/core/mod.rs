@@ -10,7 +10,18 @@ use std::path::{Path, PathBuf};
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Kukuri {
     pub conf: Config,
+    pub inputs: Vec<PathBuf>,
     pub scenes: Vec<Scene>,
+}
+
+impl Default for Kukuri {
+    fn default() -> Self {
+        Kukuri {
+            conf: Config::new(),
+            inputs: Vec::new(),
+            scenes: Vec::new(),
+        }
+    }
 }
 
 impl Kukuri {
@@ -28,18 +39,65 @@ impl Kukuri {
         }
     }
 
-    pub fn set_output_dir(&mut self, new_dir: PathBuf) {
-        self.conf.output_dir = new_dir;
+    pub fn set_output_dir<T: AsRef<str>>(&mut self, new_dir: T) {
+        self.conf.output_dir = PathBuf::from(new_dir.as_ref());
     }
 
-    pub fn set_l10n_output_dir(&mut self, new_dir: PathBuf) {
-        self.conf.l10n_output_dir = new_dir;
+    pub fn set_l10n_output_dir<T: AsRef<str>>(&mut self, new_dir: T) {
+        self.conf.l10n_output_dir = PathBuf::from(new_dir.as_ref());
     }
 
-    fn parse(&mut self, content: &str, ext: &str) {
+    pub fn append_input<T: AsRef<str>>(&mut self, path: T) {
+        self.inputs.push(PathBuf::from(path.as_ref()));
+    }
+
+    pub fn run(&self) {
+        if self.conf.separate_output {
+            self.run_with_separate_output();
+            return;
+        }
+
+        let mut scenes = Vec::new();
+
+        self.inputs.clone().iter().for_each(|p| {
+            scenes.append(&mut self.import(p));
+        });
+
+        if self.conf.use_l10n_output {
+            self.l10n_export(&scenes);
+        }
+
+        self.export(&scenes, "output");
+    }
+
+    fn run_with_separate_output(&self) {
+        fn fallback_filestem(i: usize) -> String {
+            format!("{}{}", "output", i)
+        }
+
+        for (i, p) in self.inputs.clone().iter().enumerate() {
+            let scenes = self.import(p);
+
+            if self.conf.use_l10n_output {
+                self.l10n_export(&scenes);
+            }
+
+            let file_stem = match p.file_stem() {
+                Some(s) => s
+                    .to_os_string()
+                    .into_string()
+                    .unwrap_or(fallback_filestem(i)),
+                None => fallback_filestem(i),
+            };
+
+            self.export(&scenes, file_stem);
+        }
+    }
+
+    fn parse(&self, content: &str, ext: &str) -> Vec<Scene> {
         let import_type = ImportType::from_extension(ext, &self.conf.default_script_type);
 
-        let mut scenes: Vec<Scene> = match import_type {
+        match import_type {
             ImportType::Yarn => {
                 println!("Sorry, YarnSpinner script is not supported currently.");
                 Vec::new()
@@ -49,12 +107,10 @@ impl Kukuri {
                 Vec::new()
             }
             ImportType::KukuriScript => KukuriScript::parse(content),
-        };
-
-        self.scenes.append(&mut scenes);
+        }
     }
 
-    pub fn import<P: AsRef<Path>>(&mut self, path: P) {
+    fn import<P: AsRef<Path>>(&self, path: P) -> Vec<Scene> {
         let ext = match path.as_ref().extension() {
             Some(s) => s.to_str().unwrap_or(""),
             None => "",
@@ -62,12 +118,16 @@ impl Kukuri {
 
         match utils::read_file(path.as_ref()) {
             Ok(s) => self.parse(&s, ext),
-            Err(e) => eprintln!("Failed to load {}: {:?}", path.as_ref().display(), e),
-        };
+            Err(e) => {
+                eprintln!("Failed to load {}: {:?}", path.as_ref().display(), e);
+                Vec::new()
+            }
+        }
     }
 
-    pub fn export(&mut self) {
-        if self.scenes.is_empty() {
+    fn export<T: AsRef<Vec<Scene>>, T2: AsRef<str>>(&self, scenes: T, file_stem: T2) {
+        let scenes = scenes.as_ref();
+        if scenes.is_empty() {
             return;
         };
 
@@ -100,20 +160,21 @@ impl Kukuri {
         // export type
         for et in exports {
             let s = match et {
-                ExportType::Json => Json::export_string(&self.scenes, is_minify),
-                ExportType::GDScript => GDScript::export_string(&self.scenes, is_minify),
+                ExportType::Json => Json::export_string(&scenes, is_minify),
+                ExportType::GDScript => GDScript::export_string(&scenes, is_minify),
             };
 
             // TODO: multiple output feature
             let mut path = output_dir.clone();
-            path.push(format!("{}{}", "output", et.extension()));
+            path.push(format!("{}.{}", file_stem.as_ref(), et.extension()));
 
             utils::write_file(path, &s).expect("Unable to write file.");
         }
     }
 
-    pub fn l10n_export(&self) {
-        if self.scenes.is_empty() || !self.conf.use_l10n_output {
+    fn l10n_export<T: AsRef<Vec<Scene>>>(&self, scenes: T) {
+        let scenes = scenes.as_ref();
+        if scenes.is_empty() || !self.conf.use_l10n_output {
             return;
         };
 
@@ -143,23 +204,14 @@ impl Kukuri {
                 .unwrap_or("en");
 
             let s = match et {
-                L10nExportType::Po => Po::export_string(&self.scenes, locale),
+                L10nExportType::Po => Po::export_string(scenes, locale),
             };
 
             let mut path = output_dir.clone();
-            path.push(format!("{}{}", locale, et.extension()));
+            path.push(format!("{}.{}", locale, et.extension()));
 
             // TODO: make export directory feature
             utils::write_file(path, &s).expect("Unable to write file.");
-        }
-    }
-}
-
-impl Default for Kukuri {
-    fn default() -> Self {
-        Kukuri {
-            conf: Config::new(),
-            scenes: Vec::new(),
         }
     }
 }
@@ -168,6 +220,7 @@ impl Default for Kukuri {
 mod tests {
     use super::Kukuri;
     use crate::config::Config;
+    use crate::core::dialog::{Dialog, DialogBody, DialogKind, Scene};
 
     use std::env;
 
@@ -178,7 +231,7 @@ mod tests {
 
         let kkr0 = Kukuri::from_config(Config::new());
         let mut kkr1 = Kukuri::from_config(Config::new());
-        kkr1.set_output_dir(tmp_dir.clone());
+        kkr1.set_output_dir(tmp_dir.to_str().expect("Failed tmpdir to_str()"));
 
         let tests = [(current_dir, kkr0), (tmp_dir, kkr1)];
 
@@ -194,12 +247,41 @@ mod tests {
 
         let kkr0 = Kukuri::from_config(Config::new());
         let mut kkr1 = Kukuri::from_config(Config::new());
-        kkr1.set_l10n_output_dir(tmp_dir.clone());
+        kkr1.set_l10n_output_dir(tmp_dir.to_str().expect("Failed tmpdir to_str()"));
 
         let tests = [(current_dir, kkr0), (tmp_dir, kkr1)];
 
         for &(ref src, ref expected) in &tests {
             assert_eq!(*src, *expected.conf.l10n_output_dir);
         }
+    }
+
+    #[test]
+    fn test_parse() {
+        let kkr_src = r#"
++++
+title = "TestDialog"
++++
+A: This text is TestDialog0.
+B: Are tests passssssssed?
+"#;
+        let mut sc = Scene::new();
+        sc.title = String::from("TestDialog");
+        sc.dialogs = vec![
+            Dialog::from_dialog_data(
+                DialogKind::Dialog,
+                "TestDialog_1_A",
+                vec![DialogBody::gen_text("This text is TestDialog0.")],
+            ),
+            Dialog::from_dialog_data(
+                DialogKind::Dialog,
+                "TestDialog_2_B",
+                vec![DialogBody::gen_text("Are tests passssssssed?")],
+            ),
+        ];
+        let kkr = Kukuri::new();
+
+        let expected = vec![sc];
+        assert_eq!(expected, kkr.parse(kkr_src, "kkr"));
     }
 }

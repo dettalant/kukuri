@@ -5,8 +5,6 @@ mod export;
 mod import;
 mod utils;
 
-use std::path::PathBuf;
-
 fn main() {
     let matches = cli::build_cli().get_matches();
 
@@ -18,24 +16,20 @@ fn main() {
     let mut kukuri = core::Kukuri::from_config(conf);
 
     if let Some(path) = matches.value_of("dir") {
-        let new_dir = PathBuf::from(path);
-        kukuri.set_output_dir(new_dir)
+        kukuri.set_output_dir(path)
     }
 
     if let Some(path) = matches.value_of("l10n_dir") {
-        let new_dir = PathBuf::from(path);
-        kukuri.set_l10n_output_dir(new_dir)
+        kukuri.set_l10n_output_dir(path)
     }
 
-    let inputs: Vec<_> = matches.values_of("FILE").unwrap().collect();
-
-    for path in inputs {
-        kukuri.import(path)
+    for path in matches
+        .values_of("FILE")
+        .expect("Failed to get input files")
+    {
+        kukuri.append_input(path);
+        // kukuri.import(path);
     }
 
-    if kukuri.conf.use_l10n_output {
-        kukuri.l10n_export();
-    }
-
-    kukuri.export()
+    kukuri.run();
 }

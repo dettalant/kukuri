@@ -22,8 +22,8 @@ impl ExportType {
 
     pub fn extension(&self) -> &str {
         match self {
-            ExportType::GDScript => ".gd",
-            ExportType::Json => ".json",
+            ExportType::GDScript => "gd",
+            ExportType::Json => "json",
         }
     }
 }
@@ -45,7 +45,7 @@ impl L10nExportType {
 
     pub fn extension(&self) -> &str {
         match self {
-            L10nExportType::Po => ".po",
+            L10nExportType::Po => "po",
         }
     }
 }

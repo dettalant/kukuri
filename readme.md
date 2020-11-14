@@ -26,9 +26,8 @@ A versatile dialog text compiler for game develop.
 ## TODO
 
 * Documentation
-* Multiple/Separate output
-* More efficient export type for godot
+* More efficient export type for Godot
 * YarnSpinner/Ink script parse method
 * Fluent/CSV export
-* Custom export template support
+* Custom template support when export
 * Rust-nized error handling
