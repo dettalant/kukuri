@@ -75,12 +75,10 @@ impl Kukuri {
             format!("{}{}", "output", i)
         }
 
-        for (i, p) in self.inputs.clone().iter().enumerate() {
-            let scenes = self.import(p);
+        let mut exported_scenes = Vec::new();
 
-            if self.conf.use_l10n_output {
-                self.l10n_export(&scenes);
-            }
+        for (i, p) in self.inputs.clone().iter().enumerate() {
+            let mut scenes = self.import(p);
 
             let file_stem = match p.file_stem() {
                 Some(s) => s
@@ -91,6 +89,11 @@ impl Kukuri {
             };
 
             self.export(&scenes, file_stem);
+            exported_scenes.append(&mut scenes);
+        }
+
+        if self.conf.use_l10n_output {
+            self.l10n_export(&exported_scenes);
         }
     }
 
