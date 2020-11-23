@@ -4,14 +4,14 @@ use crate::config::Config;
 use crate::export::{gd::GDScript, json::Json, po::Po, ExportType, L10nExportType};
 use crate::import::{kukuri_script::KukuriScript, ImportType};
 use crate::utils;
-use dialog::Scene;
+use dialog::{Dialog, Scene};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Kukuri {
     pub conf: Config,
     pub inputs: Vec<PathBuf>,
-    pub scenes: Vec<Scene>,
 }
 
 impl Default for Kukuri {
@@ -19,7 +19,6 @@ impl Default for Kukuri {
         Kukuri {
             conf: Config::new(),
             inputs: Vec::new(),
-            scenes: Vec::new(),
         }
     }
 }
@@ -66,8 +65,8 @@ impl Kukuri {
         if self.conf.use_l10n_output {
             self.l10n_export(&scenes);
         }
-
-        self.export(&scenes, "output");
+        let shm = Kukuri::scenes_to_hashmap(&scenes);
+        self.export(&shm, "output");
     }
 
     fn run_with_separate_output(&self) {
@@ -87,11 +86,13 @@ impl Kukuri {
                     .unwrap_or(fallback_filestem(i)),
                 None => fallback_filestem(i),
             };
+            let shm = Kukuri::scenes_to_hashmap(&scenes);
 
-            self.export(&scenes, file_stem);
+            self.export(&shm, file_stem);
             exported_scenes.append(&mut scenes);
         }
 
+        // l10n_export in a lump
         if self.conf.use_l10n_output {
             self.l10n_export(&exported_scenes);
         }
@@ -128,8 +129,7 @@ impl Kukuri {
         }
     }
 
-    fn export<T: AsRef<Vec<Scene>>, T2: AsRef<str>>(&self, scenes: T, file_stem: T2) {
-        let scenes = scenes.as_ref();
+    fn export<T: AsRef<str>>(&self, scenes: &HashMap<String, Vec<Dialog>>, file_stem: T) {
         if scenes.is_empty() {
             return;
         };
@@ -216,6 +216,15 @@ impl Kukuri {
             // TODO: make export directory feature
             utils::write_file(path, &s).expect("Unable to write file.");
         }
+    }
+
+    fn scenes_to_hashmap(scenes: &Vec<Scene>) -> HashMap<String, Vec<Dialog>> {
+        // scenes hash map
+        let mut shm = HashMap::new();
+        for sc in scenes {
+            shm.insert(sc.title.clone(), sc.dialogs.clone());
+        }
+        shm
     }
 }
 

@@ -1,5 +1,6 @@
 use super::json::Json;
-use crate::core::dialog::Scene;
+use crate::core::dialog::Dialog;
+use std::collections::HashMap;
 
 const DEFAULT_GDSCRIPT_TEMPLATE: &'static str = include_str!("../templates/gd");
 
@@ -10,7 +11,7 @@ impl GDScript {
         DEFAULT_GDSCRIPT_TEMPLATE.replace("$SCENES", json_str.as_ref())
     }
 
-    pub fn export_string(scenes: &Vec<Scene>, is_minify: bool) -> String {
+    pub fn export_string(scenes: &HashMap<String, Vec<Dialog>>, is_minify: bool) -> String {
         let json_str = Json::export_string(scenes, is_minify);
         Self::replace_template(json_str)
     }
