@@ -1,10 +1,9 @@
-use crate::core::dialog::Dialog;
-use std::collections::HashMap;
+use crate::core::dialog::Scenes;
 
 pub struct Json;
 
 impl Json {
-    pub fn export_string(scenes: &HashMap<String, Vec<Dialog>>, is_minify: bool) -> String {
+    pub fn export_string(scenes: &Scenes, is_minify: bool) -> String {
         let s = if is_minify {
             serde_json::to_string(scenes)
         } else {

@@ -4,7 +4,7 @@ use crate::config::Config;
 use crate::export::{gd::GDScript, json::Json, po::Po, ExportType, L10nExportType};
 use crate::import::{kukuri_script::KukuriScript, ImportType};
 use crate::utils;
-use dialog::{Dialog, Scene};
+use dialog::{Scene, Scenes};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -129,7 +129,7 @@ impl Kukuri {
         }
     }
 
-    fn export<T: AsRef<str>>(&self, scenes: &HashMap<String, Vec<Dialog>>, file_stem: T) {
+    fn export<T: AsRef<str>>(&self, scenes: &Scenes, file_stem: T) {
         if scenes.is_empty() {
             return;
         };
@@ -218,7 +218,7 @@ impl Kukuri {
         }
     }
 
-    fn scenes_to_hashmap(scenes: &Vec<Scene>) -> HashMap<String, Vec<Dialog>> {
+    fn scenes_to_hashmap(scenes: &Vec<Scene>) -> Scenes {
         // scenes hash map
         let mut shm = HashMap::new();
         for sc in scenes {
@@ -283,12 +283,18 @@ B: Are tests passssssssed?
             Dialog::from_dialog_data(
                 DialogKind::Dialog,
                 "TestDialog_1_A",
-                vec![DialogBody::gen_text("This text is TestDialog0.")],
+                vec![
+                    DialogBody::gen_text("This text is TestDialog0."),
+                    DialogBody::gen_text("A"),
+                ],
             ),
             Dialog::from_dialog_data(
                 DialogKind::Dialog,
                 "TestDialog_2_B",
-                vec![DialogBody::gen_text("Are tests passssssssed?")],
+                vec![
+                    DialogBody::gen_text("Are tests passssssssed?"),
+                    DialogBody::gen_text("B"),
+                ],
             ),
         ];
         let kkr = Kukuri::new();

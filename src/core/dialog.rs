@@ -1,6 +1,7 @@
 use serde::ser::{SerializeStruct, Serializer};
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
+use std::collections::HashMap;
 
 #[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize_repr, Deserialize_repr)]
 #[repr(u8)]
@@ -14,7 +15,6 @@ pub enum DialogKind {
 pub enum DialogBody {
     // Text(DialogBody || CommandArg)
     Text(String),
-    // Choice(ChoiceLabel, InnerDialog)
     Choice(ChoiceData),
 }
 
@@ -74,14 +74,16 @@ impl Serialize for Dialog {
         let is_exclude_orig_text =
             std::env::var("KUKURI_IS_EXCLUDE_ORIG_TEXT").unwrap_or(String::from("FALSE")) == "TRUE"
                 && self.kind == DialogKind::Dialog;
-        let s_len = if is_exclude_orig_text { 2 } else { 3 };
-        let mut ss = serializer.serialize_struct("Dialog", s_len)?;
+        let mut ss = serializer.serialize_struct("Dialog", 3)?;
         ss.serialize_field("id", &self.id)?;
         ss.serialize_field("kind", &self.kind)?;
 
-        if !is_exclude_orig_text {
-            ss.serialize_field("args", &self.args)?;
-        }
+        let args = if is_exclude_orig_text {
+            self.args.iter().skip(1).cloned().collect()
+        } else {
+            self.args.clone()
+        };
+        ss.serialize_field("args", &args)?;
 
         ss.end()
     }
@@ -249,6 +251,9 @@ impl Default for Scene {
         }
     }
 }
+
+// scene_title: scene_dialogs
+pub type Scenes = HashMap<String, Vec<Dialog>>;
 
 #[cfg(test)]
 mod tests {
