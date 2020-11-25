@@ -1,10 +1,11 @@
 use crate::core::dialog::{ChoiceData, Dialog, DialogBody, DialogKind, Scene};
+use crate::core::kukuri_data::KukuriData;
 use serde::{Deserialize, Serialize};
 
 pub struct KukuriScript;
 
 impl KukuriScript {
-    pub fn parse(content: &str) -> Vec<Scene> {
+    pub fn parse(content: &str) -> KukuriData {
         let mut sp_data = SceneProcessData::new();
         let mut scenes: Vec<Scene> = Vec::new();
         // current scene
@@ -93,7 +94,7 @@ impl KukuriScript {
             Self::scene_end_process(&mut sp_data, &mut scenes, &mut sc);
         }
 
-        scenes
+        KukuriData::from_scenes(scenes)
     }
 
     fn header_process(line: &str, sp_data: &mut SceneProcessData, sc: &mut Scene) {
@@ -197,6 +198,7 @@ impl KukuriScript {
     fn trim_comment(line: &str) -> &str {
         let mut bs_i = 0;
         let symbol_idx = line.char_indices().find(|&(i, c)| {
+            // match backslash char
             if c == '\\' {
                 bs_i = i;
             }
@@ -240,7 +242,7 @@ impl KukuriScript {
     // }
 }
 
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
 struct SceneProcessData {
     line_cnt: usize,
     indent_cnts: Vec<usize>,
@@ -380,6 +382,7 @@ impl SceneProcessData {
 
     pub fn count_indent_chars(line: &str) -> usize {
         line.chars()
+            // match whitespace char or tabulator char
             .position(|c| c != ' ' && c != '\u{0009}')
             .unwrap_or(0)
     }
@@ -419,7 +422,8 @@ impl MetaData {
 #[cfg(test)]
 mod tests {
     use super::{KukuriScript, SceneProcessData};
-    use crate::core::dialog::DialogKind;
+    use crate::core::dialog::{Dialog, DialogBody, DialogKind, Scene};
+    use crate::core::kukuri_data::KukuriData;
 
     #[test]
     fn test_parse_dialog_kind() {
@@ -622,5 +626,39 @@ mod tests {
 
         sp_data.nest_lv = 0;
         assert_eq!(Vec::<usize>::new(), sp_data.inner_scene_idxs());
+    }
+
+    #[test]
+    fn test_parse() {
+        let kkr_src = r#"
++++
+title = "TestDialog"
++++
+A: This text is TestDialog0.
+B: Are tests passssssssed?
+"#;
+        let mut sc = Scene::new();
+        sc.title = String::from("TestDialog");
+        sc.dialogs = vec![
+            Dialog::from_dialog_data(
+                DialogKind::Dialog,
+                "TestDialog_1_A",
+                vec![
+                    DialogBody::gen_text("This text is TestDialog0."),
+                    DialogBody::gen_text("A"),
+                ],
+            ),
+            Dialog::from_dialog_data(
+                DialogKind::Dialog,
+                "TestDialog_2_B",
+                vec![
+                    DialogBody::gen_text("Are tests passssssssed?"),
+                    DialogBody::gen_text("B"),
+                ],
+            ),
+        ];
+        let expected = KukuriData::from_scenes(vec![sc]);
+
+        assert_eq!(expected, KukuriScript::parse(kkr_src))
     }
 }

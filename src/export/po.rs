@@ -1,33 +1,37 @@
 use crate::core::dialog::{ChoiceData, Dialog, DialogBody, DialogKind, Scene};
+use crate::core::talker::Talker;
 
 const DEFAULT_PO_TEMPLATE: &'static str = include_str!("../templates/po");
 
 pub struct Po;
 
 impl Po {
-    pub fn export_string(scenes: &Vec<Scene>, locale: &str) -> String {
+    pub fn export_string(scenes: &Vec<Scene>, talkers: &Vec<Talker>, locale: &str) -> String {
         // output string
         let mut out_s = Self::gen_init_string(locale);
 
+        for talker in talkers {
+            out_s.push_str(&Self::convert_talker(talker));
+        }
+
         for scene in scenes {
-            // nest level
-            out_s.push_str(&Self::parse_scene(scene));
+            out_s.push_str(&Self::convert_scene(scene));
         }
 
         out_s
     }
 
-    pub fn parse_scene(scene: &Scene) -> String {
+    fn convert_scene(scene: &Scene) -> String {
         let mut out_s = String::new();
 
         for dialog in &scene.dialogs {
-            out_s.push_str(&Self::parse_dialog(dialog));
+            out_s.push_str(&Self::convert_dialog(dialog));
         }
 
         out_s
     }
 
-    fn parse_dialog(dialog: &Dialog) -> String {
+    fn convert_dialog(dialog: &Dialog) -> String {
         if dialog.kind == DialogKind::Command {
             return String::new();
         };
@@ -44,7 +48,7 @@ impl Po {
             DialogKind::Choices => {
                 for choice in &dialog.args {
                     if let DialogBody::Choice(cd) = choice {
-                        out_s.push_str(&Self::parse_choice(cd));
+                        out_s.push_str(&Self::convert_choice(cd));
                     }
                 }
             }
@@ -54,28 +58,34 @@ impl Po {
         out_s
     }
 
-    fn parse_choice(cd: &ChoiceData) -> String {
+    fn convert_choice(cd: &ChoiceData) -> String {
         let mut out_s = String::new();
         out_s.push_str(&Self::gen_msgid(&cd.id));
         out_s.push_str(&Self::gen_msgstr(&cd.label));
         for dialog in &cd.dialogs {
-            out_s.push_str(&Self::parse_dialog(dialog));
+            out_s.push_str(&Self::convert_dialog(dialog));
         }
 
         out_s
     }
 
-    pub fn gen_init_string(locale: &str) -> String {
+    fn convert_talker(talker: &Talker) -> String {
+        let mut out_s = Self::gen_msgid(talker.id());
+        out_s.push_str(&Self::gen_msgstr(talker.name()));
+        out_s
+    }
+
+    fn gen_init_string(locale: &str) -> String {
         let mut s = DEFAULT_PO_TEMPLATE.replace("$LOCALE", locale);
         s.push_str("\n\n");
         s
     }
 
-    pub fn gen_msgid<T: AsRef<str>>(s: T) -> String {
+    fn gen_msgid<T: AsRef<str>>(s: T) -> String {
         format!("msgid \"{}\"\n", Self::quote_escape(s.as_ref()))
     }
 
-    pub fn gen_msgstr<T: AsRef<str>>(s: T) -> String {
+    fn gen_msgstr<T: AsRef<str>>(s: T) -> String {
         // add double line break
         format!("msgstr \"{}\"\n\n\n", Self::quote_escape(s.as_ref()))
     }
@@ -89,6 +99,7 @@ impl Po {
 mod tests {
     use super::Po;
     use crate::core::dialog::{ChoiceData, Dialog, DialogBody, DialogKind};
+    use crate::core::talker::Talker;
 
     #[test]
     fn test_gen_init_string() {
@@ -108,7 +119,7 @@ msgstr \"\"
     }
 
     #[test]
-    fn test_parse_dialog() {
+    fn test_convert_dialog() {
         let d0 = Dialog::from_dialog_data(
             DialogKind::Dialog,
             "TestDialog0",
@@ -120,7 +131,7 @@ msgstr \"てててすと\"
 
 
 ";
-        assert_eq!(expected0, Po::parse_dialog(&d0));
+        assert_eq!(expected0, Po::convert_dialog(&d0));
 
         let mut cd0 = ChoiceData::from_texts("TestChoice0", "てすと選択肢0");
         cd0.dialogs.push(Dialog::from_dialog_data(
@@ -152,6 +163,18 @@ msgstr \"てすと選択肢1\"
 
 ";
 
-        assert_eq!(expected1, Po::parse_dialog(&d1));
+        assert_eq!(expected1, Po::convert_dialog(&d1));
+    }
+
+    #[test]
+    fn test_convert_talker() {
+        let expected = "\
+msgid \"A\"
+msgstr \"Alpha\"
+
+
+";
+        let talker = Talker::from_strs("A", "Alpha");
+        assert_eq!(expected, Po::convert_talker(&talker));
     }
 }

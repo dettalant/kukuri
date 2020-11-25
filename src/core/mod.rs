@@ -1,12 +1,16 @@
 pub mod dialog;
+pub mod kukuri_data;
+pub mod talker;
 
 use crate::config::Config;
 use crate::export::{gd::GDScript, json::Json, po::Po, ExportType, L10nExportType};
-use crate::import::{kukuri_script::KukuriScript, ImportType};
+use crate::import::{kukuri_script::KukuriScript, kukuri_talkers::KukuriTalkers, ImportType};
 use crate::utils;
 use dialog::{Scene, Scenes};
+use kukuri_data::KukuriData;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use talker::Talker;
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Kukuri {
@@ -57,13 +61,18 @@ impl Kukuri {
         }
 
         let mut scenes = Vec::new();
+        let mut talkers = Vec::new();
 
-        self.inputs.clone().iter().for_each(|p| {
-            scenes.append(&mut self.import(p));
-        });
+        self.inputs
+            .clone()
+            .iter()
+            .for_each(|p| match self.import(p) {
+                KukuriData::Scenes(mut sc) => scenes.append(&mut sc),
+                KukuriData::Talkers(mut tk) => talkers.append(&mut tk),
+            });
 
         if self.conf.use_l10n_output {
-            self.l10n_export(&scenes);
+            self.l10n_export(&scenes, &talkers);
         }
         let shm = Kukuri::scenes_to_hashmap(&scenes);
         self.export(&shm, "output");
@@ -75,9 +84,14 @@ impl Kukuri {
         }
 
         let mut exported_scenes = Vec::new();
+        let mut talkers = Vec::new();
 
         for (i, p) in self.inputs.clone().iter().enumerate() {
-            let mut scenes = self.import(p);
+            let mut scenes = Vec::new();
+            match self.import(p) {
+                KukuriData::Scenes(mut sc) => scenes.append(&mut sc),
+                KukuriData::Talkers(mut tk) => talkers.append(&mut tk),
+            };
 
             let file_stem = match p.file_stem() {
                 Some(s) => s
@@ -94,27 +108,28 @@ impl Kukuri {
 
         // l10n_export in a lump
         if self.conf.use_l10n_output {
-            self.l10n_export(&exported_scenes);
+            self.l10n_export(&exported_scenes, &talkers);
         }
     }
 
-    fn parse(&self, content: &str, ext: &str) -> Vec<Scene> {
+    fn parse(&self, content: &str, ext: &str) -> KukuriData {
         let import_type = ImportType::from_extension(ext, &self.conf.default_script_type);
 
         match import_type {
             ImportType::Yarn => {
                 println!("Sorry, YarnSpinner script is not supported currently.");
-                Vec::new()
+                KukuriData::new()
             }
             ImportType::Ink => {
                 println!("Sorry, Ink script is not supported currently.");
-                Vec::new()
+                KukuriData::new()
             }
             ImportType::KukuriScript => KukuriScript::parse(content),
+            ImportType::KukuriTalkers => KukuriTalkers::parse(content),
         }
     }
 
-    fn import<P: AsRef<Path>>(&self, path: P) -> Vec<Scene> {
+    fn import<P: AsRef<Path>>(&self, path: P) -> KukuriData {
         let ext = match path.as_ref().extension() {
             Some(s) => s.to_str().unwrap_or(""),
             None => "",
@@ -124,7 +139,7 @@ impl Kukuri {
             Ok(s) => self.parse(&s, ext),
             Err(e) => {
                 eprintln!("Failed to load {}: {:?}", path.as_ref().display(), e);
-                Vec::new()
+                KukuriData::new()
             }
         }
     }
@@ -175,9 +190,10 @@ impl Kukuri {
         }
     }
 
-    fn l10n_export<T: AsRef<Vec<Scene>>>(&self, scenes: T) {
+    fn l10n_export<T: AsRef<Vec<Scene>>, T2: AsRef<Vec<Talker>>>(&self, scenes: T, talkers: T2) {
         let scenes = scenes.as_ref();
-        if scenes.is_empty() || !self.conf.use_l10n_output {
+        let talkers = talkers.as_ref();
+        if (scenes.is_empty() && talkers.is_empty()) || !self.conf.use_l10n_output {
             return;
         };
 
@@ -207,7 +223,7 @@ impl Kukuri {
                 .unwrap_or("en");
 
             let s = match et {
-                L10nExportType::Po => Po::export_string(scenes, locale),
+                L10nExportType::Po => Po::export_string(scenes, talkers, locale),
             };
 
             let mut path = output_dir.clone();
@@ -232,7 +248,6 @@ impl Kukuri {
 mod tests {
     use super::Kukuri;
     use crate::config::Config;
-    use crate::core::dialog::{Dialog, DialogBody, DialogKind, Scene};
 
     use std::env;
 
@@ -266,40 +281,5 @@ mod tests {
         for &(ref src, ref expected) in &tests {
             assert_eq!(*src, *expected.conf.l10n_output_dir);
         }
-    }
-
-    #[test]
-    fn test_parse() {
-        let kkr_src = r#"
-+++
-title = "TestDialog"
-+++
-A: This text is TestDialog0.
-B: Are tests passssssssed?
-"#;
-        let mut sc = Scene::new();
-        sc.title = String::from("TestDialog");
-        sc.dialogs = vec![
-            Dialog::from_dialog_data(
-                DialogKind::Dialog,
-                "TestDialog_1_A",
-                vec![
-                    DialogBody::gen_text("This text is TestDialog0."),
-                    DialogBody::gen_text("A"),
-                ],
-            ),
-            Dialog::from_dialog_data(
-                DialogKind::Dialog,
-                "TestDialog_2_B",
-                vec![
-                    DialogBody::gen_text("Are tests passssssssed?"),
-                    DialogBody::gen_text("B"),
-                ],
-            ),
-        ];
-        let kkr = Kukuri::new();
-
-        let expected = vec![sc];
-        assert_eq!(expected, kkr.parse(kkr_src, "kkr"));
     }
 }
