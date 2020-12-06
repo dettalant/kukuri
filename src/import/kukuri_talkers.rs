@@ -24,7 +24,10 @@ impl KukuriTalkers {
             Some(i) => {
                 let (id, _) = line.split_at(i);
                 let (_, name) = line.split_at(i + 1);
-                Some(Talker::from_strs(id.trim(), name.trim()))
+                Some(Talker::from_strs(
+                    format!("TALKER_{}", id.trim()),
+                    name.trim(),
+                ))
             }
             None => None,
         }
@@ -67,9 +70,9 @@ A : Alpha
  C  :  Charlie
 "#;
         let expected = KukuriData::from_talkers(vec![
-            Talker::from_strs("A", "Alpha"),
-            Talker::from_strs("B", "Bravo"),
-            Talker::from_strs("C", "Charlie"),
+            Talker::from_strs("TALKER_A", "Alpha"),
+            Talker::from_strs("TALKER_B", "Bravo"),
+            Talker::from_strs("TALKER_C", "Charlie"),
         ]);
 
         assert_eq!(expected, KukuriTalkers::parse(talker_src));

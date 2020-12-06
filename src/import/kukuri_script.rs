@@ -123,7 +123,7 @@ impl KukuriScript {
         let talker = if !s1.is_empty() { s0 } else { "unknown" };
         let body = vec![
             DialogBody::gen_text(if !s1.is_empty() { s1 } else { s0 }),
-            DialogBody::gen_text(talker),
+            DialogBody::gen_text(format!("TALKER_{}", talker)),
         ];
 
         let id = format!("{}_{}", sp_data.gen_dialog_label(), talker);
@@ -645,7 +645,7 @@ B: Are tests passssssssed?
                 "TestDialog_1_A",
                 vec![
                     DialogBody::gen_text("This text is TestDialog0."),
-                    DialogBody::gen_text("A"),
+                    DialogBody::gen_text("TALKER_A"),
                 ],
             ),
             Dialog::from_dialog_data(
@@ -653,7 +653,7 @@ B: Are tests passssssssed?
                 "TestDialog_2_B",
                 vec![
                     DialogBody::gen_text("Are tests passssssssed?"),
-                    DialogBody::gen_text("B"),
+                    DialogBody::gen_text("TALKER_B"),
                 ],
             ),
         ];

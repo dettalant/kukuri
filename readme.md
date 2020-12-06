@@ -20,8 +20,15 @@ A versatile dialog text compiler for game develop.
 ## Example
 
 1. move this repo dir(e.g. `cd <this repo directory>`)
-2. run `kukuri -c ./examples/kukuri_example_ja/config.toml ./examples/kukuri_example_ja/kukuri_dialog1_ja.md`
+2. run `cargo run -- -c ./examples/kukuri_example_ja/config.toml ./examples/kukuri_example_ja/kukuri_dialog1_ja.md`
 3. compiled dialog texts exported to `./examples/kukuri_example_ja/export` and `./examples/kukuri_example_ja/locale`
+
+
+## File extensions
+
+|Extension|File type|
+|`.kkr`|KukuriScript|
+|`.kkrt`|KukuriTalker|
 
 ## TODO
 
