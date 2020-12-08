@@ -58,7 +58,7 @@ impl KukuriScript {
                         sp_data.truncate_idxs(indent_lv);
                     }
 
-                    sp_data.dialog_count_up();
+                    sp_data.dialog_count_up_without_did_idx();
 
                     // command push
                     let target_dialogs = sc.inner_dialogs_as_mut(&mut sp_data.inner_scene_idxs());
@@ -248,6 +248,8 @@ impl KukuriScript {
 struct SceneProcessData {
     line_cnt: usize,
     indent_cnts: Vec<usize>,
+    // only using for dialog_id generate.
+    dialog_id_idxs: Vec<usize>,
     pub dialog_idxs: Vec<usize>,
     pub nest_lv: usize,
     pub is_header: bool,
@@ -260,6 +262,7 @@ impl Default for SceneProcessData {
     fn default() -> Self {
         Self {
             dialog_idxs: Vec::new(),
+            dialog_id_idxs: Vec::new(),
             nest_lv: 0,
             line_cnt: 0,
             is_header: false,
@@ -282,10 +285,26 @@ impl SceneProcessData {
 
     pub fn dialog_count_up(&mut self) {
         let idxs = &mut self.dialog_idxs;
+        let did_idxs = &mut self.dialog_id_idxs;
+        if self.nest_lv < idxs.len() {
+            idxs[self.nest_lv] += 1;
+            did_idxs[self.nest_lv] += 1;
+        } else {
+            idxs.push(0);
+            did_idxs.push(0);
+        }
+    }
+
+    // Almost the same dialog_count_up(),
+    // but not incremented dialog_id_idxs.
+    pub fn dialog_count_up_without_did_idx(&mut self) {
+        let idxs = &mut self.dialog_idxs;
+        let did_idxs = &mut self.dialog_id_idxs;
         if self.nest_lv < idxs.len() {
             idxs[self.nest_lv] += 1;
         } else {
             idxs.push(0);
+            did_idxs.push(0);
         }
     }
 
@@ -316,6 +335,7 @@ impl SceneProcessData {
     pub fn truncate_idxs(&mut self, indent_lv: usize) {
         let l = indent_lv + 1;
         self.dialog_idxs.truncate(l);
+        self.dialog_id_idxs.truncate(l);
         self.indent_cnts.truncate(l);
     }
 
@@ -369,8 +389,8 @@ impl SceneProcessData {
     pub fn gen_dialog_label(&self) -> String {
         let mut s = self.meta_data.title.clone();
 
-        (0..self.dialog_idxs.len()).for_each(|i| {
-            let dialog_idx = self.dialog_idxs[i];
+        (0..self.dialog_id_idxs.len()).for_each(|i| {
+            let dialog_idx = self.dialog_id_idxs[i];
             s.push_str(&format!("_{}", dialog_idx + 1));
 
             if i < self.choice_idxs.len() {
@@ -572,16 +592,16 @@ mod tests {
     #[test]
     fn test_gen_dialog_label() {
         let mut sp_data = SceneProcessData::new();
-        sp_data.dialog_idxs.push(5);
+        sp_data.dialog_id_idxs.push(5);
         sp_data.choice_idxs.push((2, 3));
         assert_eq!("UnknownScene_6_C3L4", sp_data.gen_dialog_label());
 
-        sp_data.dialog_idxs.push(2);
+        sp_data.dialog_id_idxs.push(2);
         sp_data.choice_idxs.push((8, 5));
         assert_eq!("UnknownScene_6_C3L4_3_C9L6", sp_data.gen_dialog_label());
 
-        sp_data.dialog_idxs.clear();
-        sp_data.dialog_idxs.push(2);
+        sp_data.dialog_id_idxs.clear();
+        sp_data.dialog_id_idxs.push(2);
         assert_eq!("UnknownScene_3_C3L4", sp_data.gen_dialog_label());
 
         sp_data.choice_idxs.clear();
