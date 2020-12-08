@@ -206,7 +206,7 @@ impl Scene {
             return Self::retrieve_inner_dialogs_as_mut(&mut cd.dialogs, inner_scene_idxs);
         } else {
             panic!(
-                "get_inner_dialogs_as_mut: dialog_body {} is not choice!",
+                "retrieve_inner_dialogs_as_mut: dialog_body {} is not choice!",
                 li
             );
         }

@@ -58,6 +58,8 @@ impl KukuriScript {
                         sp_data.truncate_idxs(indent_lv);
                     }
 
+                    sp_data.dialog_count_up();
+
                     // command push
                     let target_dialogs = sc.inner_dialogs_as_mut(&mut sp_data.inner_scene_idxs());
                     target_dialogs.push(Self::command_process(line));

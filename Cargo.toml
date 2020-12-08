@@ -1,6 +1,6 @@
 [package]
 name = "kukuri"
-version = "0.1.4"
+version = "0.1.5"
 authors = ["dettalant <lilac@dettalant.com>"]
 description = "A versatile dialog text compiler for game develop."
 edition = "2018"
