@@ -235,9 +235,10 @@ impl KukuriScript {
     //     let print_str: String = line.as_ref().chars().take(16).collect();
     //
     //     println!(
-    //         "#{}: {:?} {} // {}",
+    //         "#{} - {}:  {:?} {} // {}",
     //         sp_data.line_cnt,
-    //         sp_data.inner_scene_idxs(),
+    //         sp_data.nest_lv,
+    //         sp_data.dialog_id_idxs,
     //         print_str,
     //         sp_data.gen_dialog_label()
     //     );
@@ -393,7 +394,7 @@ impl SceneProcessData {
             let dialog_idx = self.dialog_id_idxs[i];
             s.push_str(&format!("_{}", dialog_idx + 1));
 
-            if i < self.choice_idxs.len() {
+            if i < self.nest_lv && i < self.choice_idxs.len() {
                 let (ci, li) = self.choice_idxs[i];
                 s.push_str(&format!("_C{}L{}", ci + 1, li + 1));
             }
@@ -593,19 +594,24 @@ mod tests {
     fn test_gen_dialog_label() {
         let mut sp_data = SceneProcessData::new();
         sp_data.dialog_id_idxs.push(5);
+        assert_eq!("UnknownScene_6", sp_data.gen_dialog_label());
+
         sp_data.choice_idxs.push((2, 3));
+        sp_data.nest_lv = 1;
         assert_eq!("UnknownScene_6_C3L4", sp_data.gen_dialog_label());
 
         sp_data.dialog_id_idxs.push(2);
         sp_data.choice_idxs.push((8, 5));
+        sp_data.nest_lv = 2;
         assert_eq!("UnknownScene_6_C3L4_3_C9L6", sp_data.gen_dialog_label());
 
         sp_data.dialog_id_idxs.clear();
         sp_data.dialog_id_idxs.push(2);
-        assert_eq!("UnknownScene_3_C3L4", sp_data.gen_dialog_label());
-
-        sp_data.choice_idxs.clear();
+        sp_data.nest_lv = 0;
         assert_eq!("UnknownScene_3", sp_data.gen_dialog_label());
+
+        sp_data.nest_lv = 1;
+        assert_eq!("UnknownScene_3_C3L4", sp_data.gen_dialog_label());
     }
 
     #[test]
