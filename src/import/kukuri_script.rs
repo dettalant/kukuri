@@ -221,11 +221,15 @@ impl KukuriScript {
     }
 
     fn parse_dialog_kind(line: &str) -> DialogKind {
+        let mut c_iter = line.trim_start().chars();
         // '\0' is placeholder char
-        let c = line.trim_start().chars().nth(0).unwrap_or('\0');
+        // First char in line
+        let c0 = c_iter.next().unwrap_or('\0');
+        // Second char in line
+        let c1 = c_iter.next().unwrap_or('\0');
 
-        match c {
-            '$' => DialogKind::Command,
+        match c0 {
+            '$' if c1 == ' ' || c1 == '\u{0009}' => DialogKind::Command,
             '*' | '+' | '-' => DialogKind::Choices,
             _ => DialogKind::Dialog,
         }
@@ -452,6 +456,8 @@ mod tests {
     fn test_parse_dialog_kind() {
         let tests = [
             ("$ jump ttt", DialogKind::Command),
+            ("$\u{0009} allow tabular char", DialogKind::Command),
+            ("$not command", DialogKind::Dialog),
             ("A: test dialog", DialogKind::Dialog),
             ("non-talker dialog", DialogKind::Dialog),
             ("  # commented line", DialogKind::Dialog),
